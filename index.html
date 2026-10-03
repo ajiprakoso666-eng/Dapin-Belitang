@@ -20,7 +20,7 @@
 </div>
 <div id="adminBar" class="toolbar hidden"><button class="btn primary" onclick="openCustomer()">＋ Nasabah</button><button class="btn primary" onclick="openInvestor()">＋ Investor</button><button class="btn gray" onclick="refresh()">↻ Refresh</button><button class="btn danger" onclick="logout()">Keluar</button></div>
 <div id="investorBar" class="toolbar hidden"><span id="investorName" class="btn gray"></span><button class="btn gray" onclick="refresh()">↻ Refresh</button><button class="btn danger" onclick="logout()">Keluar</button></div>
-<div class="panel"><div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap"><h2>Daftar Nasabah</h2><input id="search" class="search" placeholder="Cari nasabah..." oninput="render()"></div><div class="table-wrap"><table><thead><tr><th>Nasabah</th><th>Investor</th><th>Mulai</th><th>Pokok</th><th>Hari</th><th>Denda</th><th>Dibayar</th><th>Sisa</th><th>Tgl Lunas</th><th>Status</th><th id="actHead">Aksi</th></tr></thead><tbody id="rows"></tbody></table></div></div>
+<div class="panel"><div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap"><h2>Daftar Nasabah (Dikelompokkan per Nama)</h2><input id="search" class="search" placeholder="Cari nasabah..." oninput="render()"></div><div class="table-wrap"><table><thead><tr><th>Nasabah</th><th>Investor</th><th>Mulai</th><th>Pokok</th><th>Hari</th><th>Denda</th><th>Dibayar</th><th>Sisa</th><th>Tgl Lunas</th><th>Status</th><th id="actHead">Aksi</th></tr></thead><tbody id="rows"></tbody></table></div></div>
 <div class="panel"><h2>Ringkasan Bagi Hasil & Modal Investor</h2><div class="table-wrap"><table><thead><tr><th>Investor</th><th>Total Modal</th><th>Modal Aktif</th><th>Modal Sisa</th><th>Total Laba (Lunas + Est)</th><th>Hak Investor (Bersih)</th><th>Sudah Di-Withdraw (Lunas)</th><th>Saldo Laba Lunas Bisa Ditarik</th><th>Aksi</th></tr></thead><tbody id="investorRows"></tbody></table></div></div>
 </div>
 
@@ -111,11 +111,9 @@ function isCustomerLunas(c){
   return x.sisa === 0 || !!c.settled_date;
 }
 
-// Fungsi otomatis sinkronisasi nomor HP jika nama nasabah sama
 function syncPhoneByName(){
   let typedName = cname.value.trim().toLowerCase();
   if(!typedName) return;
-  // Cari nasabah lain yang memiliki nama sama dan sudah punya nomor HP
   let found = customers.find(c => c.name.trim().toLowerCase() === typedName && c.phone && c.phone.trim() !== '');
   if(found){
     cphone.value = found.phone;
@@ -128,7 +126,7 @@ async function load(){
  const {data:p,error:pe}=await sb.from('profiles').select('*,investors(*)').eq('id',(await sb.auth.getUser()).data.user.id).single();if(pe){alert(pe.message);return}profile=p;
  const [ir,cr,pr,wr]=await Promise.all([
    sb.from('investors').select('*').order('name'),
-   sb.from('customers').select('*').order('created_at',{ascending:false}),
+   sb.from('customers').select('*').order('name',{ascending:true}),
    sb.from('payments').select('*').order('payment_date',{ascending:false}),
    sb.from('investor_withdrawals').select('*')
  ]);
@@ -140,7 +138,8 @@ async function load(){
  investorName.textContent=profile.investors?.name||'';actHead.classList.toggle('hidden',profile.role!=='admin');render();
 }
 function render(){
- const q=(search.value||'').toLowerCase();let list=customers.filter(c=>(c.name+' '+(c.phone||'')).toLowerCase().includes(q));
+ const q=(search.value||'').toLowerCase();
+ let list=customers.filter(c=>(c.name+' '+(c.phone||'')).toLowerCase().includes(q));
  count.textContent=list.length;
  principal.textContent=money(list.reduce((a,c)=>a+Number(c.principal),0));
  paid.textContent=money(list.reduce((a,c)=>a+paidFor(c.id),0));
@@ -158,41 +157,71 @@ function render(){
  });
  realProfitCard.textContent = money(realProfit);
  pendingProfitCard.textContent = money(pendingProfit);
- 
- rows.innerHTML=list.map(c=>{
-  let x=calc(c),inv=investors.find(i=>i.id===c.investor_id);
-  let lunas = isCustomerLunas(c);
-  let settledDisplay = c.settled_date ? dateFmt(c.settled_date) : (lunas ? '<span class="muted" style="font-size:11px">Belum diset</span>' : '-');
-  
-  // Deteksi Otomatis Hari Ke-1 atau lebih DAN belum lunas
-  let isDayOneOrMore = x.days >= 1 && !lunas;
-  let waButton = '';
-  if(isDayOneOrMore && c.phone){
-    let cleanPhone = c.phone.replace(/\D/g,'');
-    if(cleanPhone.startsWith('0')) cleanPhone = '62' + cleanPhone.slice(1);
-    let msg = `Halo Bapak/Ibu *${c.name}*,\n\nIni adalah pengingat otomatis dari *Dapin Belitang* bahwa pinjaman Anda telah berjalan selama *${x.days} hari* dan status saat ini *BELUM LUNAS*.\n\n📋 *Rincian Tagihan:*\n- Tanggal Mulai: ${dateFmt(c.start_date)}\n- Pokok Pinjaman: ${money(c.principal)}\n- Denda Berjalan (${x.days} Hari): ${money(x.pen)}\n- Total Sudah Dibayar: ${money(x.paid)}\n📌 *Sisa Hutang Saat Ini: ${money(x.sisa)}*\n\nMohon segera melakukan pelunasan. Terima kasih!`;
-    let waUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}`;
-    waButton = `<a href="${waUrl}" target="_blank" class="wa" style="margin-top:4px">💬 Kirim WA</a>`;
-  }
-  
-  return `<tr>
-   <td><b>${esc(c.name)}</b><br><small>${esc(c.phone||'')}</small></td>
-   <td>${esc(inv?.name||'-')}</td>
-   <td>${dateFmt(c.start_date)}</td>
-   <td>${money(c.principal)}</td>
-   <td>${x.days}</td>
-   <td>${money(x.pen)}</td>
-   <td>${money(x.paid)}</td>
-   <td><b>${money(x.sisa)}</b></td>
-   <td>${settledDisplay}</td>
-   <td><span class="badge ${lunas?'ok':'warn'}">${lunas?'LUNAS':'BELUM LUNAS'}</span></td>
-   <td class="${profile.role==='admin'?'':'hidden'}">
-    <button class="btn gray" onclick="openCustomer('${c.id}')">Edit</button> 
-    <button class="btn primary" onclick="addPayment('${c.id}')">Bayar</button>
-    ${waButton}
-   </td>
-  </tr>`
- }).join('')||'<tr><td colspan="11" class="muted">Tidak ada data.</td></tr>';
+
+ // Kelompokkan data berdasarkan nama nasabah
+ let grouped = {};
+ list.forEach(c => {
+   let key = c.name.trim().toUpperCase();
+   if(!grouped[key]) grouped[key] = [];
+   grouped[key].push(c);
+ });
+
+ let rowsHtml = '';
+ for(let nameKey in grouped){
+   let groupList = grouped[nameKey];
+   let sample = groupList[0];
+   let totalGroupSisa = groupList.reduce((sum, c) => sum + calc(c).sisa, 0);
+   let hasUnsettledDayOne = groupList.some(c => getDays(c) >= 1 && !isCustomerLunas(c));
+
+   // Baris Header Kelompok Nama
+   let groupWaBtn = '';
+   if(hasUnsettledDayOne && sample.phone){
+     let cleanPhone = sample.phone.replace(/\D/g,'');
+     if(cleanPhone.startsWith('0')) cleanPhone = '62' + cleanPhone.slice(1);
+     let msg = `Halo Bapak/Ibu *${sample.name}*,\n\nIni adalah pengingat otomatis dari *Dapin Belitang* mengenai total sisa tagihan pinjaman Anda yang belum lunas.\n\n📌 *Total Sisa Tagihan Keseluruhan: ${money(totalGroupSisa)}*\n\nMohon segera melakukan pelunasan. Terima kasih!`;
+     let waUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}`;
+     groupWaBtn = `<a href="${waUrl}" target="_blank" class="wa" style="margin-left:10px;padding:3px 8px;font-size:11px">💬 Kirim WA Rekap</a>`;
+   }
+
+   rowsHtml += `<tr style="background:#e2e8f0;font-weight:bold"><td colspan="11">👤 Nasabah: ${esc(sample.name)} <span style="font-weight:normal;color:#475569">(${sample.phone||'No HP -'})</span> ${groupWaBtn}</td></tr>`;
+
+   // Baris item pinjaman di dalam kelompok
+   groupList.forEach(c => {
+     let x=calc(c),inv=investors.find(i=>i.id===c.investor_id);
+     let lunas = isCustomerLunas(c);
+     let settledDisplay = c.settled_date ? dateFmt(c.settled_date) : (lunas ? '<span class="muted" style="font-size:11px">Belum diset</span>' : '-');
+     
+     let isDayOneOrMore = x.days >= 1 && !lunas;
+     let waButton = '';
+     if(isDayOneOrMore && c.phone){
+       let cleanPhone = c.phone.replace(/\D/g,'');
+       if(cleanPhone.startsWith('0')) cleanPhone = '62' + cleanPhone.slice(1);
+       let msg = `Halo Bapak/Ibu *${c.name}*,\n\nIni adalah pengingat otomatis dari *Dapin Belitang* bahwa pinjaman Anda (Investor: ${inv?.name||'-'}) telah berjalan selama *${x.days} hari* dan status saat ini *BELUM LUNAS*.\n\n📋 *Rincian Tagihan:*\n- Tanggal Mulai: ${dateFmt(c.start_date)}\n- Pokok Pinjaman: ${money(c.principal)}\n- Denda Berjalan (${x.days} Hari): ${money(x.pen)}\n- Total Sudah Dibayar: ${money(x.paid)}\n📌 *Sisa Hutang Saat Ini: ${money(x.sisa)}*\n\nMohon segera melakukan pelunasan. Terima kasih!`;
+       let waUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}`;
+       waButton = `<a href="${waUrl}" target="_blank" class="wa" style="margin-top:4px">💬 Kirim WA</a>`;
+     }
+
+     rowsHtml += `<tr>
+      <td style="padding-left:25px"><small>Pinjaman ID: ${c.id.slice(0,6)}</small></td>
+      <td>${esc(inv?.name||'-')}</td>
+      <td>${dateFmt(c.start_date)}</td>
+      <td>${money(c.principal)}</td>
+      <td>${x.days}</td>
+      <td>${money(x.pen)}</td>
+      <td>${money(x.paid)}</td>
+      <td><b>${money(x.sisa)}</b></td>
+      <td>${settledDisplay}</td>
+      <td><span class="badge ${lunas?'ok':'warn'}">${lunas?'LUNAS':'BELUM LUNAS'}</span></td>
+      <td class="${profile.role==='admin'?'':'hidden'}">
+       <button class="btn gray" onclick="openCustomer('${c.id}')">Edit</button> 
+       <button class="btn primary" onclick="addPayment('${c.id}')">Bayar</button>
+       ${waButton}
+      </td>
+     </tr>`;
+   });
+ }
+
+ rows.innerHTML = rowsHtml || '<tr><td colspan="11" class="muted">Tidak ada data.</td></tr>';
 
  investorRows.innerHTML=investors.filter(i=>profile.role==='admin'||i.id===profile.investor_id).map(i=>{
   let cs=customers.filter(c=>c.investor_id===i.id);
