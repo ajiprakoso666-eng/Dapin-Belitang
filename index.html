@@ -52,7 +52,6 @@
     <div class="field"><label>Email</label><input id="iemail" type="email"></div>
     <div class="field"><label>Bagi Hasil (%)</label><input id="ishare" type="number"></div>
     
-    <!-- Bagian Pengaturan Modal (Hanya muncul saat Edit Investor) -->
     <div id="editCapitalSection" class="field full hidden" style="background:#f8fafc;padding:12px;border-radius:10px;border:1px solid #e2e8f0;">
       <label id="capitalInfoLabel" style="color:#2563eb;margin-bottom:8px">Total Modal Saat Ini: Rp0</label>
       <div style="display:flex;gap:10px;align-items:center">
@@ -71,7 +70,6 @@
       </div>
     </div>
 
-    <!-- Bagian Modal Awal (Hanya muncul saat Tambah Investor Baru) -->
     <div id="newCapitalSection" class="field">
       <label>Total Modal Awal (Rp)</label>
       <input id="icapitalNew" type="number" placeholder="Contoh: 10000000">
@@ -207,7 +205,7 @@ function render(){
     <td><span style="color:#dc2626">${money(totalWithdrawn)}</span></td>
     <td><span style="color:#16a34a;font-weight:700">${money(remainingClaim)}</span></td>
     <td>${profile.role==='admin'?`
-      <button class="btn success" onclick="withdrawInvestor('${i.id}',${remainingClaim})" style="margin-right:3px;padding:6px 10px;font-size:12px">Withdraw</button>
+      <button class="btn success" onclick="withdrawInvestor('${i.id}', ${remainingClaim},${totalCapital})" style="margin-right:3px;padding:6px 10px;font-size:12px">Withdraw</button>
       <button class="btn gray" onclick="openInvestor('${i.id}')" style="margin-right:3px;padding:6px 10px;font-size:12px">Edit</button>
       <button class="btn danger" onclick="deleteInvestor('${i.id}')" style="padding:6px 10px;font-size:12px">Hapus</button>`:''}</td>
   </tr>`
@@ -306,27 +304,44 @@ async function addPayment(id){
   refresh();
 }
 
-async function withdrawInvestor(investorId, maxAmount){
+async function withdrawInvestor(investorId, maxAmount, currentCapital){
   let inv = investors.find(i => i.id === investorId);
   if(!inv) return;
-  let input = prompt(`Masukkan nominal penarikan (Withdraw) untuk ${inv.name}:\nMaksimal bisa ditarik (dari laba lunas): ${money(maxAmount)}`, maxAmount);
+  let input = prompt(`Masukkan nominal penarikan (Withdraw) untuk ${inv.name}:\nSaldo Laba Lunas Bisa Ditarik: ${money(maxAmount)}`, maxAmount);
   if(!input) return;
   let amount = Number(input);
   if(isNaN(amount) || amount <= 0){
     alert('Nominal tidak valid.');
     return;
   }
-  if(amount > maxAmount){
-    alert(`Nominal penarikan melebihi sisa saldo laba lunas (${money(maxAmount)}).`);
+
+  // Cek apakah withdraw melebihi sisa saldo laba lunas
+  let excess = amount - maxAmount;
+  if(excess > 0){
+    let confirmReduce = confirm(`⚠️ Nominal withdraw melebihi saldo laba lunas sebesar ${money(excess)}.\n\nApakah Anda ingin mengambil kelebihan tersebut langsung dari mengurangi Modal Investor (${money(currentCap)})?`);
+    if(!confirmReduce) return;
+  }
+
+  // Catat riwayat withdraw sebesar nominal yang diminta
+  let {error: wError} = await sb.from('investor_withdrawals').insert({investor_id: investorId, amount: amount});
+  if(wError){
+    alert('Gagal melakukan withdraw: ' + wError.message);
     return;
   }
 
-  let {error} = await sb.from('investor_withdrawals').insert({investor_id: investorId, amount: amount});
-  if(error){
-    alert('Gagal melakukan withdraw: ' + error.message);
-    return;
+  // Jika ada kelebihan dari laba, kurangi modal investor secara otomatis
+  if(excess > 0){
+    let newCapital = Math.max(0, currentCapital - excess);
+    let {error: cError} = await sb.from('investors').update({initial_capital: newCapital}).eq('id', investorId);
+    if(cError){
+      alert('Withdraw tercatat, tetapi gagal memperbarui modal investor: ' + cError.message);
+      return;
+    }
+    alert(`✅ Berhasil melakukan withdraw sebesar ${money(amount)}.\nKelebihan ${money(excess)} telah otomatis memotong Modal Investor (${money(currentCapital)} ➔ ${money(newCapital)}).`);
+  } else {
+    alert(`✅ Berhasil melakukan withdraw sebesar ${money(amount)} untuk ${inv.name}.`);
   }
-  alert(`✅ Berhasil melakukan withdraw sebesar ${money(amount)} untuk ${inv.name}.`);
+
   refresh();
 }
 
@@ -341,14 +356,12 @@ function openInvestor(id=''){
   let currentCap = inv ? Number(inv.initial_capital || 0) : 0;
   
   if(id){
-    // Mode Edit: Tampilkan kotak tambah/kurangi modal, sembunyikan input modal awal biasa
     document.getElementById('editCapitalSection').classList.remove('hidden');
     document.getElementById('newCapitalSection').classList.add('hidden');
     capitalInfoLabel.textContent = `Total Modal Saat Ini: ${money(currentCap)}`;
     capitalAction.value = 'set';
     icapitalEdit.value = '';
   } else {
-    // Mode Tambah Baru: Tampilkan input modal awal biasa, sembunyikan kotak tambah/kurangi
     document.getElementById('editCapitalSection').classList.add('hidden');
     document.getElementById('newCapitalSection').classList.remove('hidden');
     icapitalNew.value = '';
@@ -365,7 +378,6 @@ async function saveInvestor(){
   let finalCapital = 0;
 
   if(id){
-    // Logika khusus Edit Investor (+ / - / set)
     let existing = investors.find(x=>x.id === id);
     let oldCap = existing ? Number(existing.initial_capital || 0) : 0;
     let action = capitalAction.value;
@@ -379,7 +391,6 @@ async function saveInvestor(){
       finalCapital = inputAmount;
     }
   } else {
-    // Logika Tambah Investor Baru
     finalCapital = Number(icapitalNew.value) || 0;
   }
 
