@@ -5,7 +5,7 @@
 <title>Dapin Belitang — Investor</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
-*{box-sizing:border-box}body{margin:0;font-family:Inter,Arial,sans-serif;background:#f3f6f9;color:#17202a}.wrap{max-width:1200px;margin:auto;padding:18px}.top{background:#111827;color:#fff;border-radius:18px;padding:22px;margin-bottom:16px}.top h1{margin:0 0 5px}.muted{color:#64748b}.top .muted{color:#cbd5e1}.grid{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:16px}.card,.panel{background:#fff;border-radius:15px;padding:16px;box-shadow:0 2px 10px #0000000c}.card small{color:#64748b}.card strong{display:block;font-size:18px;margin-top:8px}.toolbar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}.toolbar>*{min-height:42px}.search{padding:10px;border:1px solid #d5dbe2;border-radius:10px}.btn{border:0;border-radius:10px;padding:10px 14px;font-weight:700;cursor:pointer}.primary{background:#2563eb;color:#fff}.danger{background:#dc2626;color:#fff}.gray{background:#e5e7eb;color:#111827}.success{background:#16a34a;color:#fff}.login{max-width:430px;margin:8vh auto}.login h1{margin-top:0}.field{margin:10px 0}.field label{display:block;font-size:13px;font-weight:700;margin-bottom:5px}.field input,.field select{width:100%;padding:12px;border:1px solid #d5dbe2;border-radius:10px}.hidden{display:none!important}.table-wrap{overflow:auto}table{width:100%;border-collapse:collapse;min-width:900px}th,td{padding:10px;border-bottom:1px solid #e5e7eb;text-align:left;font-size:13px}th{background:#f8fafc}.badge{padding:5px 8px;border-radius:999px;font-size:11px;font-weight:700}.ok{background:#dcfce7;color:#166534}.warn{background:#fee2e2;color:#991b1b}.modal{position:fixed;inset:0;background:#0008;display:none;padding:20px;overflow:auto}.modalbox{background:#fff;max-width:620px;margin:30px auto;padding:20px;border-radius:16px}.formgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.full{grid-column:1/-1}.note{background:#eff6ff;color:#1e40af;padding:10px;border-radius:10px;font-size:13px}@media(max-width:1000px){.grid{grid-template-columns:repeat(3,1fr)}}@media(max-width:800px){.grid{grid-template-columns:1fr 1fr}.formgrid{grid-template-columns:1fr}.full{grid-column:auto}}@media(max-width:500px){.grid{grid-template-columns:1fr}}
+*{box-sizing:border-box}body{margin:0;font-family:Inter,Arial,sans-serif;background:#f3f6f9;color:#17202a}.wrap{max-width:1200px;margin:auto;padding:18px}.top{background:#111827;color:#fff;border-radius:18px;padding:22px;margin-bottom:16px}.top h1{margin:0 0 5px}.muted{color:#64748b}.top .muted{color:#cbd5e1}.grid{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:16px}.card,.panel{background:#fff;border-radius:15px;padding:16px;box-shadow:0 2px 10px #0000000c}.card small{color:#64748b}.card strong{display:block;font-size:18px;margin-top:8px}.toolbar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}.toolbar>*{min-height:42px}.search{padding:10px;border:1px solid #d5dbe2;border-radius:10px}.btn{border:0;border-radius:10px;padding:10px 14px;font-weight:700;cursor:pointer}.primary{background:#2563eb;color:#fff}.danger{background:#dc2626;color:#fff}.gray{background:#e5e7eb;color:#111827}.success{background:#16a34a;color:#fff}.wa{background:#22c55e;color:#fff;text-decoration:none;display:inline-block;padding:6px 10px;font-size:12px;border-radius:10px;font-weight:700;text-align:center}.login{max-width:430px;margin:8vh auto}.login h1{margin-top:0}.field{margin:10px 0}.field label{display:block;font-size:13px;font-weight:700;margin-bottom:5px}.field input,.field select{width:100%;padding:12px;border:1px solid #d5dbe2;border-radius:10px}.hidden{display:none!important}.table-wrap{overflow:auto}table{width:100%;border-collapse:collapse;min-width:950px}th,td{padding:10px;border-bottom:1px solid #e5e7eb;text-align:left;font-size:13px}th{background:#f8fafc}.badge{padding:5px 8px;border-radius:999px;font-size:11px;font-weight:700}.ok{background:#dcfce7;color:#166534}.warn{background:#fee2e2;color:#991b1b}.modal{position:fixed;inset:0;background:#0008;display:none;padding:20px;overflow:auto}.modalbox{background:#fff;max-width:620px;margin:30px auto;padding:20px;border-radius:16px}.formgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.full{grid-column:1/-1}.note{background:#eff6ff;color:#1e40af;padding:10px;border-radius:10px;font-size:13px}@media(max-width:1000px){.grid{grid-template-columns:repeat(3,1fr)}}@media(max-width:800px){.grid{grid-template-columns:1fr 1fr}.formgrid{grid-template-columns:1fr}.full{grid-column:auto}}@media(max-width:500px){.grid{grid-template-columns:1fr}}
 </style></head>
 <body>
 <div id="loginView" class="wrap login"><div class="panel"><h1>🔐 Dapin Belitang</h1><p class="muted">Login admin atau investor.</p><div class="field"><label>Email</label><input id="email" type="email" autocomplete="username"></div><div class="field"><label>Password</label><input id="password" type="password" autocomplete="current-password"></div><button class="btn primary" style="width:100%" onclick="login()">Masuk</button><p id="loginMsg" class="muted"></p></div></div>
@@ -31,7 +31,7 @@
       <input type="hidden" id="cid">
       <div class="field full"><label>Investor</label><select id="cinv"></select></div>
       <div class="field"><label>Nama</label><input id="cname"></div>
-      <div class="field"><label>No. HP</label><input id="cphone"></div>
+      <div class="field"><label>No. HP (Contoh: 08123456789)</label><input id="cphone"></div>
       <div class="field"><label>Pokok Pinjaman</label><input id="cprincipal" type="number"></div>
       <div class="field"><label>Tanggal Mulai</label><input id="cdate" type="date"></div>
       <div class="field full"><label>Tanggal Pelunasan (Menentukan Total Denda)</label><input id="csettled" type="date"></div>
@@ -153,6 +153,17 @@ function render(){
   let lunas = isCustomerLunas(c);
   let settledDisplay = c.settled_date ? dateFmt(c.settled_date) : (lunas ? '<span class="muted" style="font-size:11px">Belum diset</span>' : '-');
   
+  // Deteksi apakah sudah hari ke-6 atau lebih DAN belum lunas
+  let isDaySixOrMore = x.days >= 6 && !lunas;
+  let waButton = '';
+  if(isDaySixOrMore && c.phone){
+    let cleanPhone = c.phone.replace(/\D/g,'');
+    if(cleanPhone.startsWith('0')) cleanPhone = '62' + cleanPhone.slice(1);
+    let msg = `Halo Bapak/Ibu *${c.name}*,\n\nIni adalah pengingat otomatis dari *Dapin Belitang* bahwa pinjaman Anda telah berjalan selama *${x.days} hari* dan status saat ini *BELUM LUNAS*.\n\n📋 *Rincian Tagihan:*\n- Tanggal Mulai: ${dateFmt(c.start_date)}\n- Pokok Pinjaman: ${money(c.principal)}\n- Denda Berjalan (${x.days} Hari): ${money(x.pen)}\n- Total Sudah Dibayar: ${money(x.paid)}\n📌 *Sisa Hutang Saat Ini: ${money(x.sisa)}*\n\nMohon segera melakukan pelunasan. Terima kasih!`;
+    let waUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}`;
+    waButton = `<a href="${waUrl}" target="_blank" class="wa" style="margin-top:4px">💬 Kirim WA</a>`;
+  }
+  
   return `<tr>
    <td><b>${esc(c.name)}</b><br><small>${esc(c.phone||'')}</small></td>
    <td>${esc(inv?.name||'-')}</td>
@@ -167,6 +178,7 @@ function render(){
    <td class="${profile.role==='admin'?'':'hidden'}">
     <button class="btn gray" onclick="openCustomer('${c.id}')">Edit</button> 
     <button class="btn primary" onclick="addPayment('${c.id}')">Bayar</button>
+    ${waButton}
    </td>
   </tr>`
  }).join('')||'<tr><td colspan="11" class="muted">Tidak ada data.</td></tr>';
@@ -175,7 +187,7 @@ function render(){
   let cs=customers.filter(c=>c.investor_id===i.id);
   let activePrincipal = cs.filter(c => !isCustomerLunas(c)).reduce((a,c)=>a+Number(c.principal),0);
   let totalCapital = Number(i.initial_capital || 0);
-  let availableCapital = Math.max(0, totalCapital - activePrincipal); // Modal Sisa (Standby)
+  let availableCapital = Math.max(0, totalCapital - activePrincipal);
 
   let estProfitInvestor = 0;
   let settledProfitInvestor = 0;
@@ -194,7 +206,6 @@ function render(){
 
   let totalWithdrawn = withdrawals.filter(w=>w.investor_id===i.id).reduce((sum,w)=>sum+Number(w.amount),0);
   let remainingClaim = Math.max(0, ipSettled - totalWithdrawn);
-  let maxWithdraw = remainingClaim + availableCapital; // Batas maksimal: Saldo Laba Lunas + Modal Sisa
   
   return `<tr>
     <td><b>${esc(i.name)}</b></td>
@@ -308,7 +319,7 @@ async function addPayment(id){
 async function withdrawInvestor(investorId, maxProfitClaim, availableCapital, currentTotalCapital){
   let inv = investors.find(i => i.id === investorId);
   if(!inv) return;
-  let maxWithdraw = maxProfitClaim + availableCapital; // Batas maksimal: Laba lunas + Modal Sisa
+  let maxWithdraw = maxProfitClaim + availableCapital;
   
   let input = prompt(`Masukkan nominal penarikan (Withdraw) untuk ${inv.name}:\nMaksimal bisa ditarik (Laba Lunas + Modal Sisa): ${money(maxWithdraw)}`, maxWithdraw);
   if(!input) return;
@@ -322,14 +333,12 @@ async function withdrawInvestor(investorId, maxProfitClaim, availableCapital, cu
     return;
   }
 
-  // Catat riwayat withdraw
   let {error: wError} = await sb.from('investor_withdrawals').insert({investor_id: investorId, amount: amount});
   if(wError){
     alert('Gagal melakukan withdraw: ' + wError.message);
     return;
   }
 
-  // Jika nominal withdraw melebihi laba lunas, kelebihannya otomatis memotong Modal Sisa / Total Modal
   let excess = amount - maxProfitClaim;
   if(excess > 0){
     let newTotalCapital = Math.max(0, currentTotalCapital - excess);
