@@ -28,7 +28,7 @@
       <div class="field"><label>No. HP</label><input id="cphone"></div>
       <div class="field"><label>Pokok</label><input id="cprincipal" type="number"></div>
       <div class="field"><label>Tanggal Mulai</label><input id="cdate" type="date"></div>
-      <div class="field full"><label>Tanggal Pelunasan (Opsional/Otomatis)</label><input id="csettled" type="date"></div>
+      <div class="field full"><label>Tanggal Pelunasan (Menentukan Total Denda)</label><input id="csettled" type="date"></div>
       <div class="field full"><label>Catatan</label><input id="cnote"></div>
     </div>
     <div class="toolbar" style="justify-content:flex-end;margin-top:10px">
@@ -60,10 +60,23 @@ const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 let profile=null, customers=[], payments=[], investors=[];
 const money=n=>new Intl.NumberFormat('id-ID',{style:'currency',currency:'IDR',maximumFractionDigits:0}).format(Number(n)||0);
 const dateFmt=s=>s?new Date(s+'T00:00:00').toLocaleDateString('id-ID'): '-';
-const days=s=>Math.max(0,Math.floor((new Date() - new Date(s+'T00:00:00'))/86400000));
-function penalty(c){let d=days(c.start_date);let rate=d<=5?.10:.20;return Number(c.principal)*rate*d}
+
+// Menghitung jumlah hari (jika sudah ada settled_date, hitung sampai settled_date. Jika belum, hitung sampai hari ini)
+function getDays(c){
+  let end = c.settled_date ? new Date(c.settled_date+'T00:00:00') : new Date();
+  let start = new Date(c.start_date+'T00:00:00');
+  return Math.max(0, Math.floor((end - start)/86400000));
+}
+
+function penalty(c){
+  let d = getDays(c);
+  let rate = d <= 5 ? 0.10 : 0.20;
+  return Number(c.principal) * rate * d;
+}
+
 function paidFor(id){return payments.filter(p=>p.customer_id===id).reduce((a,p)=>a+Number(p.amount),0)}
-function calc(c){let d=days(c.start_date),pen=penalty(c),paid=paidFor(c.id),total=Number(c.principal)+pen;return {days:d,pen,paid,total,sisa:Math.max(0,total-paid)}}
+function calc(c){let d=getDays(c),pen=penalty(c),paid=paidFor(c.id),total=Number(c.principal)+pen;return {days:d,pen,paid,total,sisa:Math.max(0,total-paid)}}
+
 async function login(){const {error}=await sb.auth.signInWithPassword({email:email.value,password:password.value});loginMsg.textContent=error?error.message:''}
 async function logout(){await sb.auth.signOut()}
 async function load(){
@@ -82,7 +95,7 @@ function render(){
  rows.innerHTML=list.map(c=>{
   let x=calc(c),inv=investors.find(i=>i.id===c.investor_id);
   let isLunas = x.sisa === 0;
-  let settledDisplay = c.settled_date ? dateFmt(c.settled_date) : (isLunas ? '<span class="muted" style="font-size:11px">Otomatis / Belum diset</span>' : '-');
+  let settledDisplay = c.settled_date ? dateFmt(c.settled_date) : (isLunas ? '<span class="muted" style="font-size:11px">Belum diset</span>' : '-');
   
   return `<tr>
    <td><b>${esc(c.name)}</b><br><small>${esc(c.phone||'')}</small></td>
@@ -104,7 +117,7 @@ function render(){
 
  investorRows.innerHTML=investors.filter(i=>profile.role==='admin'||i.id===profile.investor_id).map(i=>{let cs=customers.filter(c=>c.investor_id===i.id),profit=0;cs.forEach(c=>{let x=calc(c);profit+=Math.max(0,x.paid-Number(c.principal))});let ip=profit*Number(i.share_percent)/100;return `<tr><td>${esc(i.name)}</td><td>${money(cs.reduce((a,c)=>a+Number(c.principal),0))}</td><td>${money(profit)}</td><td>${money(ip)} (${i.share_percent}%)</td><td>${money(profit-ip)}</td><td>${profile.role==='admin'?`<button class="btn gray" onclick="openInvestor('${i.id}')" style="margin-right:5px">Edit</button><button class="btn danger" onclick="deleteInvestor('${i.id}')">Hapus</button>`:''}</td></tr>`}).join('');
 }
-function esc(s){return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]))}
+function esc(s){return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'} [m]))}
 
 function openCustomer(id=''){
   cid.value=id;
@@ -154,15 +167,13 @@ async function addPayment(id){
   let r=await sb.from('payments').insert({customer_id:id,amount:Number(amount),payment_date:today});
   if(r.error){alert(r.error.message);return;}
 
-  // Cek apakah setelah pembayaran ini hutangnya menjadi lunas
+  // Cek apakah setelah pembayaran ini sisa hutang menjadi 0 (lunas)
   let c = customers.find(x=>x.id===id);
-  // Ambil ulang data/hitung sisa setelah pembayaran dimasukkan sementara di lokal/supabase
-  // Kita bisa cek sisa hutang terbaru dengan menghitung ulang setelah bayar
   payments.push({customer_id: id, amount: Number(amount), payment_date: today});
   let x = calc(c);
   
   if(x.sisa === 0 && !c.settled_date){
-    // Otomatis isi tanggal pelunasan dengan hari ini jika belum ada
+    // Otomatis set tanggal pelunasan ke hari pembayaran terakhir
     await sb.from('customers').update({settled_date: today}).eq('id', id);
   }
 
