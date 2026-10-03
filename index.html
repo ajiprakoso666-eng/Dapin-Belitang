@@ -5,7 +5,7 @@
 <title>Dapin Belitang — Investor</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
-*{box-sizing:border-box}body{margin:0;font-family:Inter,Arial,sans-serif;background:#f3f6f9;color:#17202a}.wrap{max-width:1200px;margin:auto;padding:18px}.top{background:#111827;color:#fff;border-radius:18px;padding:22px;margin-bottom:16px}.top h1{margin:0 0 5px}.muted{color:#64748b}.top .muted{color:#cbd5e1}.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px}.card,.panel{background:#fff;border-radius:15px;padding:16px;box-shadow:0 2px 10px #0000000c}.card small{color:#64748b}.card strong{display:block;font-size:22px;margin-top:8px}.toolbar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}.toolbar>*{min-height:42px}.search{padding:10px;border:1px solid #d5dbe2;border-radius:10px}.btn{border:0;border-radius:10px;padding:10px 14px;font-weight:700;cursor:pointer}.primary{background:#2563eb;color:#fff}.danger{background:#dc2626;color:#fff}.gray{background:#e5e7eb;color:#111827}.login{max-width:430px;margin:8vh auto}.login h1{margin-top:0}.field{margin:10px 0}.field label{display:block;font-size:13px;font-weight:700;margin-bottom:5px}.field input,.field select{width:100%;padding:12px;border:1px solid #d5dbe2;border-radius:10px}.hidden{display:none!important}.table-wrap{overflow:auto}table{width:100%;border-collapse:collapse;min-width:800px}th,td{padding:10px;border-bottom:1px solid #e5e7eb;text-align:left;font-size:13px}th{background:#f8fafc}.badge{padding:5px 8px;border-radius:999px;font-size:11px;font-weight:700}.ok{background:#dcfce7;color:#166534}.warn{background:#fee2e2;color:#991b1b}.modal{position:fixed;inset:0;background:#0008;display:none;padding:20px;overflow:auto}.modalbox{background:#fff;max-width:620px;margin:30px auto;padding:20px;border-radius:16px}.formgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.full{grid-column:1/-1}.note{background:#eff6ff;color:#1e40af;padding:10px;border-radius:10px;font-size:13px}@media(max-width:800px){.grid{grid-template-columns:1fr 1fr}.formgrid{grid-template-columns:1fr}.full{grid-column:auto}}@media(max-width:500px){.grid{grid-template-columns:1fr}}
+*{box-sizing:border-box}body{margin:0;font-family:Inter,Arial,sans-serif;background:#f3f6f9;color:#17202a}.wrap{max-width:1200px;margin:auto;padding:18px}.top{background:#111827;color:#fff;border-radius:18px;padding:22px;margin-bottom:16px}.top h1{margin:0 0 5px}.muted{color:#64748b}.top .muted{color:#cbd5e1}.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px}.card,.panel{background:#fff;border-radius:15px;padding:16px;box-shadow:0 2px 10px #0000000c}.card small{color:#64748b}.card strong{display:block;font-size:22px;margin-top:8px}.toolbar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}.toolbar>*{min-height:42px}.search{padding:10px;border:1px solid #d5dbe2;border-radius:10px}.btn{border:0;border-radius:10px;padding:10px 14px;font-weight:700;cursor:pointer}.primary{background:#2563eb;color:#fff}.danger{background:#dc2626;color:#fff}.gray{background:#e5e7eb;color:#111827}.login{max-width:430px;margin:8vh auto}.login h1{margin-top:0}.field{margin:10px 0}.field label{display:block;font-size:13px;font-weight:700;margin-bottom:5px}.field input,.field select{width:100%;padding:12px;border:1px solid #d5dbe2;border-radius:10px}.hidden{display:none!important}.table-wrap{overflow:auto}table{width:100%;border-collapse:collapse;min-width:900px}th,td{padding:10px;border-bottom:1px solid #e5e7eb;text-align:left;font-size:13px}th{background:#f8fafc}.badge{padding:5px 8px;border-radius:999px;font-size:11px;font-weight:700}.ok{background:#dcfce7;color:#166534}.warn{background:#fee2e2;color:#991b1b}.modal{position:fixed;inset:0;background:#0008;display:none;padding:20px;overflow:auto}.modalbox{background:#fff;max-width:620px;margin:30px auto;padding:20px;border-radius:16px}.formgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.full{grid-column:1/-1}.note{background:#eff6ff;color:#1e40af;padding:10px;border-radius:10px;font-size:13px}@media(max-width:800px){.grid{grid-template-columns:1fr 1fr}.formgrid{grid-template-columns:1fr}.full{grid-column:auto}}@media(max-width:500px){.grid{grid-template-columns:1fr}}
 </style></head>
 <body>
 <div id="loginView" class="wrap login"><div class="panel"><h1>🔐 Dapin Belitang</h1><p class="muted">Login admin atau investor.</p><div class="field"><label>Email</label><input id="email" type="email" autocomplete="username"></div><div class="field"><label>Password</label><input id="password" type="password" autocomplete="current-password"></div><button class="btn primary" style="width:100%" onclick="login()">Masuk</button><p id="loginMsg" class="muted"></p></div></div>
@@ -14,10 +14,30 @@
 <div class="grid"><div class="card"><small>Nasabah</small><strong id="count">0</strong></div><div class="card"><small>Total Pokok</small><strong id="principal">Rp0</strong></div><div class="card"><small>Total Dibayar</small><strong id="paid">Rp0</strong></div><div class="card"><small>Sisa Hutang</small><strong id="outstanding">Rp0</strong></div></div>
 <div id="adminBar" class="toolbar hidden"><button class="btn primary" onclick="openCustomer()">＋ Nasabah</button><button class="btn primary" onclick="openInvestor()">＋ Investor</button><button class="btn gray" onclick="refresh()">↻ Refresh</button><button class="btn danger" onclick="logout()">Keluar</button></div>
 <div id="investorBar" class="toolbar hidden"><span id="investorName" class="btn gray"></span><button class="btn gray" onclick="refresh()">↻ Refresh</button><button class="btn danger" onclick="logout()">Keluar</button></div>
-<div class="panel"><div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap"><h2>Daftar Nasabah</h2><input id="search" class="search" placeholder="Cari nasabah..." oninput="render()"></div><div class="table-wrap"><table><thead><tr><th>Nasabah</th><th>Investor</th><th>Mulai</th><th>Pokok</th><th>Hari</th><th>Denda</th><th>Dibayar</th><th>Sisa</th><th>Status</th><th id="actHead">Aksi</th></tr></thead><tbody id="rows"></tbody></table></div></div>
+<div class="panel"><div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap"><h2>Daftar Nasabah</h2><input id="search" class="search" placeholder="Cari nasabah..." oninput="render()"></div><div class="table-wrap"><table><thead><tr><th>Nasabah</th><th>Investor</th><th>Mulai</th><th>Pokok</th><th>Hari</th><th>Denda</th><th>Dibayar</th><th>Sisa</th><th>Tgl Lunas</th><th>Status</th><th id="actHead">Aksi</th></tr></thead><tbody id="rows"></tbody></table></div></div>
 <div class="panel"><h2>Ringkasan Bagi Hasil</h2><div class="table-wrap"><table><thead><tr><th>Investor</th><th>Modal/Pokok</th><th>Laba Terealisasi</th><th>Bagi Hasil Investor</th><th>Bagian Dapin</th><th>Aksi</th></tr></thead><tbody id="investorRows"></tbody></table></div></div>
 </div>
-<div id="customerModal" class="modal"><div class="modalbox"><h2 id="customerTitle">Nasabah</h2><div class="formgrid"><input type="hidden" id="cid"><div class="field full"><label>Investor</label><select id="cinv"></select></div><div class="field"><label>Nama</label><input id="cname"></div><div class="field"><label>No. HP</label><input id="cphone"></div><div class="field"><label>Pokok</label><input id="cprincipal" type="number"></div><div class="field"><label>Tanggal Mulai</label><input id="cdate" type="date"></div><div class="field full"><label>Catatan</label><input id="cnote"></div></div><div class="toolbar" style="justify-content:flex-end;margin-top:10px"><button class="btn gray" onclick="closeModal('customerModal')">Batal</button><button class="btn primary" onclick="saveCustomer()">Simpan</button></div></div></div>
+
+<div id="customerModal" class="modal">
+  <div class="modalbox">
+    <h2 id="customerTitle">Nasabah</h2>
+    <div class="formgrid">
+      <input type="hidden" id="cid">
+      <div class="field full"><label>Investor</label><select id="cinv"></select></div>
+      <div class="field"><label>Nama</label><input id="cname"></div>
+      <div class="field"><label>No. HP</label><input id="cphone"></div>
+      <div class="field"><label>Pokok</label><input id="cprincipal" type="number"></div>
+      <div class="field"><label>Tanggal Mulai</label><input id="cdate" type="date"></div>
+      <div class="field full"><label>Tanggal Pelunasan (Opsional/Otomatis)</label><input id="csettled" type="date"></div>
+      <div class="field full"><label>Catatan</label><input id="cnote"></div>
+    </div>
+    <div class="toolbar" style="justify-content:flex-end;margin-top:10px">
+      <button class="btn gray" onclick="closeModal('customerModal')">Batal</button>
+      <button class="btn primary" onclick="saveCustomer()">Simpan</button>
+    </div>
+  </div>
+</div>
+
 <div id="investorModal" class="modal">
   <div class="modalbox">
     <h2>Investor</h2>
@@ -58,65 +78,124 @@ async function load(){
 function render(){
  const q=(search.value||'').toLowerCase();let list=customers.filter(c=>(c.name+' '+(c.phone||'')).toLowerCase().includes(q));
  count.textContent=list.length;principal.textContent=money(list.reduce((a,c)=>a+Number(c.principal),0));paid.textContent=money(list.reduce((a,c)=>a+paidFor(c.id),0));outstanding.textContent=money(list.reduce((a,c)=>a+calc(c).sisa,0));
- rows.innerHTML=list.map(c=>{let x=calc(c),inv=investors.find(i=>i.id===c.investor_id);return `<tr><td><b>${esc(c.name)}</b><br><small>${esc(c.phone||'')}</small></td><td>${esc(inv?.name||'-')}</td><td>${dateFmt(c.start_date)}</td><td>${money(c.principal)}</td><td>${x.days}</td><td>${money(x.pen)}</td><td>${money(x.paid)}</td><td><b>${money(x.sisa)}</b></td><td><span class="badge ${x.sisa===0?'ok':'warn'}">${x.sisa===0?'LUNAS':'BELUM LUNAS'}</span></td><td class="${profile.role==='admin'?'':'hidden'}"><button class="btn gray" onclick="openCustomer('${c.id}')">Edit</button> <button class="btn primary" onclick="addPayment('${c.id}')">Bayar</button></td></tr>`}).join('')||'<tr><td colspan="10" class="muted">Tidak ada data.</td></tr>';
+ 
+ rows.innerHTML=list.map(c=>{
+  let x=calc(c),inv=investors.find(i=>i.id===c.investor_id);
+  let isLunas = x.sisa === 0;
+  let settledDisplay = c.settled_date ? dateFmt(c.settled_date) : (isLunas ? '<span class="muted" style="font-size:11px">Otomatis / Belum diset</span>' : '-');
+  
+  return `<tr>
+   <td><b>${esc(c.name)}</b><br><small>${esc(c.phone||'')}</small></td>
+   <td>${esc(inv?.name||'-')}</td>
+   <td>${dateFmt(c.start_date)}</td>
+   <td>${money(c.principal)}</td>
+   <td>${x.days}</td>
+   <td>${money(x.pen)}</td>
+   <td>${money(x.paid)}</td>
+   <td><b>${money(x.sisa)}</b></td>
+   <td>${settledDisplay}</td>
+   <td><span class="badge ${isLunas?'ok':'warn'}">${isLunas?'LUNAS':'BELUM LUNAS'}</span></td>
+   <td class="${profile.role==='admin'?'':'hidden'}">
+    <button class="btn gray" onclick="openCustomer('${c.id}')">Edit</button> 
+    <button class="btn primary" onclick="addPayment('${c.id}')">Bayar</button>
+   </td>
+  </tr>`
+ }).join('')||'<tr><td colspan="11" class="muted">Tidak ada data.</td></tr>';
+
  investorRows.innerHTML=investors.filter(i=>profile.role==='admin'||i.id===profile.investor_id).map(i=>{let cs=customers.filter(c=>c.investor_id===i.id),profit=0;cs.forEach(c=>{let x=calc(c);profit+=Math.max(0,x.paid-Number(c.principal))});let ip=profit*Number(i.share_percent)/100;return `<tr><td>${esc(i.name)}</td><td>${money(cs.reduce((a,c)=>a+Number(c.principal),0))}</td><td>${money(profit)}</td><td>${money(ip)} (${i.share_percent}%)</td><td>${money(profit-ip)}</td><td>${profile.role==='admin'?`<button class="btn gray" onclick="openInvestor('${i.id}')" style="margin-right:5px">Edit</button><button class="btn danger" onclick="deleteInvestor('${i.id}')">Hapus</button>`:''}</td></tr>`}).join('');
 }
 function esc(s){return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]))}
-function openCustomer(id=''){cid.value=id;customerTitle.textContent=id?'Edit Nasabah':'Nasabah Baru';cinv.innerHTML=investors.map(i=>`<option value="${i.id}">${esc(i.name)}</option>`).join('');if(id){let c=customers.find(x=>x.id===id);cinv.value=c.investor_id;cname.value=c.name;cphone.value=c.phone||'';cprincipal.value=c.principal;cdate.value=c.start_date;cnote.value=c.notes||''}else{cname.value='';cphone.value='';cprincipal.value='';cdate.value=new Date().toISOString().slice(0,10);cnote.value=''}customerModal.style.display='block'}
+
+function openCustomer(id=''){
+  cid.value=id;
+  customerTitle.textContent=id?'Edit Nasabah':'Nasabah Baru';
+  cinv.innerHTML=investors.map(i=>`<option value="${i.id}">${esc(i.name)}</option>`).join('');
+  if(id){
+    let c=customers.find(x=>x.id===id);
+    cinv.value=c.investor_id;
+    cname.value=c.name;
+    cphone.value=c.phone||'';
+    cprincipal.value=c.principal;
+    cdate.value=c.start_date;
+    csettled.value=c.settled_date||'';
+    cnote.value=c.notes||'';
+  }else{
+    cname.value='';
+    cphone.value='';
+    cprincipal.value='';
+    cdate.value=new Date().toISOString().slice(0,10);
+    csettled.value='';
+    cnote.value='';
+  }
+  customerModal.style.display='block';
+}
+
 function closeModal(id){document.getElementById(id).style.display='none'}
-async function saveCustomer(){let id=cid.value,data={investor_id:cinv.value,name:cname.value.trim(),phone:cphone.value.trim(),principal:Number(cprincipal.value),start_date:cdate.value,notes:cnote.value.trim()};let r=id?await sb.from('customers').update(data).eq('id',id):await sb.from('customers').insert(data);if(r.error)alert(r.error.message);else{closeModal('customerModal');refresh()}}
-async function addPayment(id){let amount=prompt('Nominal pembayaran:');if(!amount)return;let r=await sb.from('payments').insert({customer_id:id,amount:Number(amount),payment_date:new Date().toISOString().slice(0,10)});if(r.error)alert(r.error.message);else refresh()}
+
+async function saveCustomer(){
+  let id=cid.value;
+  let data={
+    investor_id:cinv.value,
+    name:cname.value.trim(),
+    phone:cphone.value.trim(),
+    principal:Number(cprincipal.value),
+    start_date:cdate.value,
+    settled_date:csettled.value?csettled.value:null,
+    notes:cnote.value.trim()
+  };
+  let r=id?await sb.from('customers').update(data).eq('id',id):await sb.from('customers').insert(data);
+  if(r.error)alert(r.error.message);else{closeModal('customerModal');refresh()}
+}
+
+async function addPayment(id){
+  let amount=prompt('Nominal pembayaran:');
+  if(!amount)return;
+  let today = new Date().toISOString().slice(0,10);
+  let r=await sb.from('payments').insert({customer_id:id,amount:Number(amount),payment_date:today});
+  if(r.error){alert(r.error.message);return;}
+
+  // Cek apakah setelah pembayaran ini hutangnya menjadi lunas
+  let c = customers.find(x=>x.id===id);
+  // Ambil ulang data/hitung sisa setelah pembayaran dimasukkan sementara di lokal/supabase
+  // Kita bisa cek sisa hutang terbaru dengan menghitung ulang setelah bayar
+  payments.push({customer_id: id, amount: Number(amount), payment_date: today});
+  let x = calc(c);
+  
+  if(x.sisa === 0 && !c.settled_date){
+    // Otomatis isi tanggal pelunasan dengan hari ini jika belum ada
+    await sb.from('customers').update({settled_date: today}).eq('id', id);
+  }
+
+  refresh();
+}
+
 function openInvestor(id=''){
   iid.value=id;
   iname.value=id?investors.find(x=>x.id===id)?.name||'':'';
   iemail.value=id?investors.find(x=>x.id===id)?.email||'':'';
   ishare.value=id?investors.find(x=>x.id===id)?.share_percent||'':'';
-  
-  // Mencegah autofill password browser saat tombol Edit diklik
   ipassword.value='';
   ipassword.type='text';
   setTimeout(()=>ipassword.type='password', 50);
-  
   investorModal.style.display='block';
 }
+
 async function saveInvestor(){
   let data = {
     name: iname.value.trim(),
     email: iemail.value.trim(),
     share_percent: Number(ishare.value)
   };
-
   let isNew = !iid.value;
-  
-  let r = isNew
-    ? await sb.from('investors').insert(data).select().single()
-    : await sb.from('investors').update(data).eq('id', iid.value).select().single();
-
-  if(r.error){
-    alert('Gagal menyimpan investor: ' + r.error.message);
-    return;
-  }
-
+  let r = isNew?await sb.from('investors').insert(data).select().single():await sb.from('investors').update(data).eq('id', iid.value).select().single();
+  if(r.error){alert('Gagal menyimpan investor: ' + r.error.message);return;}
   let investorId = isNew ? r.data.id : iid.value;
   const password = ipassword.value.trim();
-
   if(password){
-    if(password.length < 8){
-      alert('Password minimal 8 karakter');
-      return;
-    }
-
-    const { error: fnError } = await sb.functions.invoke(
-      'set-investor-password',
-      { body: { investor_id: investorId, password: password } }
-    );
-
-    if(fnError){
-      alert('Gagal mengatur password: ' + fnError.message);
-      return;
-    }
+    if(password.length < 8){alert('Password minimal 8 karakter');return;}
+    const { error: fnError } = await sb.functions.invoke('set-investor-password', { body: { investor_id: investorId, password: password } });
+    if(fnError){alert('Gagal mengatur password: ' + fnError.message);return;}
   }
-
   closeModal('investorModal');
   refresh();
 }
@@ -124,18 +203,12 @@ async function saveInvestor(){
 async function deleteInvestor(id){
   const investor=investors.find(i=>i.id===id);
   if(!investor)return;
-
   if(!confirm('Hapus investor "'+investor.name+'"?'))return;
-
   const {error}=await sb.from('investors').delete().eq('id',id);
-
-  if(error){
-    alert('Gagal menghapus investor: '+error.message);
-    return;
-  }
-
+  if(error){alert('Gagal menghapus investor: '+error.message);return;}
   refresh();
 }
+
 async function refresh(){await load()}
 sb.auth.onAuthStateChange((_e,session)=>{if(session)load();else{app.classList.add('hidden');loginView.classList.remove('hidden')}});
 sb.channel('dapin-live').on('postgres_changes',{event:'*',schema:'public',table:'customers'},()=>load()).on('postgres_changes',{event:'*',schema:'public',table:'payments'},()=>load()).on('postgres_changes',{event:'*',schema:'public',table:'investors'},()=>load()).subscribe();
