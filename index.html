@@ -66,9 +66,19 @@ function openCustomer(id=''){cid.value=id;customerTitle.textContent=id?'Edit Nas
 function closeModal(id){document.getElementById(id).style.display='none'}
 async function saveCustomer(){let id=cid.value,data={investor_id:cinv.value,name:cname.value.trim(),phone:cphone.value.trim(),principal:Number(cprincipal.value),start_date:cdate.value,notes:cnote.value.trim()};let r=id?await sb.from('customers').update(data).eq('id',id):await sb.from('customers').insert(data);if(r.error)alert(r.error.message);else{closeModal('customerModal');refresh()}}
 async function addPayment(id){let amount=prompt('Nominal pembayaran:');if(!amount)return;let r=await sb.from('payments').insert({customer_id:id,amount:Number(amount),payment_date:new Date().toISOString().slice(0,10)});if(r.error)alert(r.error.message);else refresh()}
-function openInvestor(id=''){iid.value=id;iname.value=id?investors.find(x=>x.id===id)?.name||'':'';iemail.value=id?investors.find(x=>x.id===id)?.email||'':'';ishare.value=id?investors.find(x=>x.id===id)?.share_percent||'':'';ipassword.value='';investorModal.style.display='block'}
-async function saveInvestor(){
-  let data = {
+function openInvestor(id=''){
+  iid.value=id;
+  iname.value=id?investors.find(x=>x.id===id)?.name||'':'';
+  iemail.value=id?investors.find(x=>x.id===id)?.email||'':'';
+  ishare.value=id?investors.find(x=>x.id===id)?.share_percent||'':'';
+  
+  // Kosongkan dan reset paksa kolom password agar tidak terkena autofill browser
+  ipassword.value='';
+  ipassword.type='text';
+  setTimeout(()=>ipassword.type='password', 100);
+  
+  investorModal.style.display='block';
+}
     name: iname.value.trim(),
     email: iemail.value.trim(),
     share_percent: Number(ishare.value)
