@@ -5,7 +5,7 @@
 <title>Dapin Belitang — Investor</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
-*{box-sizing:border-box}body{margin:0;font-family:Inter,Arial,sans-serif;background:#f3f6f9;color:#17202a}.wrap{max-width:1200px;margin:auto;padding:18px}.top{background:#111827;color:#fff;border-radius:18px;padding:22px;margin-bottom:16px}.top h1{margin:0 0 5px}.muted{color:#64748b}.top .muted{color:#cbd5e1}.grid{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:16px}.card,.panel{background:#fff;border-radius:15px;padding:16px;box-shadow:0 2px 10px #0000000c}.card small{color:#64748b}.card strong{display:block;font-size:18px;margin-top:8px}.toolbar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}.toolbar>*{min-height:42px}.search{padding:10px;border:1px solid #d5dbe2;border-radius:10px}.btn{border:0;border-radius:10px;padding:10px 14px;font-weight:700;cursor:pointer}.primary{background:#2563eb;color:#fff}.danger{background:#dc2626;color:#fff}.gray{background:#e5e7eb;color:#111827}.login{max-width:430px;margin:8vh auto}.login h1{margin-top:0}.field{margin:10px 0}.field label{display:block;font-size:13px;font-weight:700;margin-bottom:5px}.field input,.field select{width:100%;padding:12px;border:1px solid #d5dbe2;border-radius:10px}.hidden{display:none!important}.table-wrap{overflow:auto}table{width:100%;border-collapse:collapse;min-width:900px}th,td{padding:10px;border-bottom:1px solid #e5e7eb;text-align:left;font-size:13px}th{background:#f8fafc}.badge{padding:5px 8px;border-radius:999px;font-size:11px;font-weight:700}.ok{background:#dcfce7;color:#166534}.warn{background:#fee2e2;color:#991b1b}.modal{position:fixed;inset:0;background:#0008;display:none;padding:20px;overflow:auto}.modalbox{background:#fff;max-width:620px;margin:30px auto;padding:20px;border-radius:16px}.formgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.full{grid-column:1/-1}.note{background:#eff6ff;color:#1e40af;padding:10px;border-radius:10px;font-size:13px}@media(max-width:1000px){.grid{grid-template-columns:repeat(3,1fr)}}@media(max-width:800px){.grid{grid-template-columns:1fr 1fr}.formgrid{grid-template-columns:1fr}.full{grid-column:auto}}@media(max-width:500px){.grid{grid-template-columns:1fr}}
+*{box-sizing:border-box}body{margin:0;font-family:Inter,Arial,sans-serif;background:#f3f6f9;color:#17202a}.wrap{max-width:1200px;margin:auto;padding:18px}.top{background:#111827;color:#fff;border-radius:18px;padding:22px;margin-bottom:16px}.top h1{margin:0 0 5px}.muted{color:#64748b}.top .muted{color:#cbd5e1}.grid{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:16px}.card,.panel{background:#fff;border-radius:15px;padding:16px;box-shadow:0 2px 10px #0000000c}.card small{color:#64748b}.card strong{display:block;font-size:18px;margin-top:8px}.toolbar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}.toolbar>*{min-height:42px}.search{padding:10px;border:1px solid #d5dbe2;border-radius:10px}.btn{border:0;border-radius:10px;padding:10px 14px;font-weight:700;cursor:pointer}.primary{background:#2563eb;color:#fff}.danger{background:#dc2626;color:#fff}.gray{background:#e5e7eb;color:#111827}.success{background:#16a34a;color:#fff}.login{max-width:430px;margin:8vh auto}.login h1{margin-top:0}.field{margin:10px 0}.field label{display:block;font-size:13px;font-weight:700;margin-bottom:5px}.field input,.field select{width:100%;padding:12px;border:1px solid #d5dbe2;border-radius:10px}.hidden{display:none!important}.table-wrap{overflow:auto}table{width:100%;border-collapse:collapse;min-width:900px}th,td{padding:10px;border-bottom:1px solid #e5e7eb;text-align:left;font-size:13px}th{background:#f8fafc}.badge{padding:5px 8px;border-radius:999px;font-size:11px;font-weight:700}.ok{background:#dcfce7;color:#166534}.warn{background:#fee2e2;color:#991b1b}.modal{position:fixed;inset:0;background:#0008;display:none;padding:20px;overflow:auto}.modalbox{background:#fff;max-width:620px;margin:30px auto;padding:20px;border-radius:16px}.formgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.full{grid-column:1/-1}.note{background:#eff6ff;color:#1e40af;padding:10px;border-radius:10px;font-size:13px}@media(max-width:1000px){.grid{grid-template-columns:repeat(3,1fr)}}@media(max-width:800px){.grid{grid-template-columns:1fr 1fr}.formgrid{grid-template-columns:1fr}.full{grid-column:auto}}@media(max-width:500px){.grid{grid-template-columns:1fr}}
 </style></head>
 <body>
 <div id="loginView" class="wrap login"><div class="panel"><h1>🔐 Dapin Belitang</h1><p class="muted">Login admin atau investor.</p><div class="field"><label>Email</label><input id="email" type="email" autocomplete="username"></div><div class="field"><label>Password</label><input id="password" type="password" autocomplete="current-password"></div><button class="btn primary" style="width:100%" onclick="login()">Masuk</button><p id="loginMsg" class="muted"></p></div></div>
@@ -15,13 +15,13 @@
   <div class="card"><small>Nasabah</small><strong id="count">0</strong></div>
   <div class="card"><small>Total Pokok</small><strong id="principal">Rp0</strong></div>
   <div class="card"><small>Total Dibayar</small><strong id="paid">Rp0</strong></div>
-  <div class="card"><small>Sisa Hutang</small><strong id="outstanding">Rp0</strong></div>
-  <div class="card"><small>Est. Total Laba</small><strong id="totalProfitCard" style="color:#16a34a">Rp0</strong></div>
+  <div class="card"><small>Laba Riil (Lunas)</small><strong id="realProfitCard" style="color:#2563eb">Rp0</strong></div>
+  <div class="card"><small>Est. Laba (Belum Lunas)</small><strong id="pendingProfitCard" style="color:#d97706">Rp0</strong></div>
 </div>
 <div id="adminBar" class="toolbar hidden"><button class="btn primary" onclick="openCustomer()">＋ Nasabah</button><button class="btn primary" onclick="openInvestor()">＋ Investor</button><button class="btn gray" onclick="refresh()">↻ Refresh</button><button class="btn danger" onclick="logout()">Keluar</button></div>
 <div id="investorBar" class="toolbar hidden"><span id="investorName" class="btn gray"></span><button class="btn gray" onclick="refresh()">↻ Refresh</button><button class="btn danger" onclick="logout()">Keluar</button></div>
 <div class="panel"><div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap"><h2>Daftar Nasabah</h2><input id="search" class="search" placeholder="Cari nasabah..." oninput="render()"></div><div class="table-wrap"><table><thead><tr><th>Nasabah</th><th>Investor</th><th>Mulai</th><th>Pokok</th><th>Hari</th><th>Denda</th><th>Dibayar</th><th>Sisa</th><th>Tgl Lunas</th><th>Status</th><th id="actHead">Aksi</th></tr></thead><tbody id="rows"></tbody></table></div></div>
-<div class="panel"><h2>Ringkasan Bagi Hasil & Modal Investor</h2><div class="table-wrap"><table><thead><tr><th>Investor</th><th>Total Modal</th><th>Modal Terpakai (Aktif)</th><th>Modal Sisa (Standby)</th><th>Est. Total Laba</th><th>Bagi Hasil Investor</th><th>Bagian Dapin</th><th>Aksi</th></tr></thead><tbody id="investorRows"></tbody></table></div></div>
+<div class="panel"><h2>Ringkasan Bagi Hasil & Modal Investor</h2><div class="table-wrap"><table><thead><tr><th>Investor</th><th>Total Modal</th><th>Modal Aktif</th><th>Modal Sisa</th><th>Total Laba (Lunas + Est)</th><th>Hak Investor (Bersih)</th><th>Sudah Di-Withdraw</th><th>Sisa Hak Bisa Ditarik</th><th>Aksi</th></tr></thead><tbody id="investorRows"></tbody></table></div></div>
 </div>
 
 <div id="customerModal" class="modal">
@@ -64,7 +64,7 @@
 const SUPABASE_URL='https://chqdgxjdfbsatzoivpwb.supabase.co';
 const SUPABASE_KEY='sb_publishable_vq_6la2B3uYk1c2SdXQYyw_KTe0QJCy';
 const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
-let profile=null, customers=[], payments=[], investors=[];
+let profile=null, customers=[], payments=[], investors=[], withdrawals=[];
 const money=n=>new Intl.NumberFormat('id-ID',{style:'currency',currency:'IDR',maximumFractionDigits:0}).format(Number(n)||0);
 const dateFmt=s=>s?new Date(s+'T00:00:00').toLocaleDateString('id-ID'): '-';
 
@@ -92,8 +92,14 @@ async function login(){const {error}=await sb.auth.signInWithPassword({email:ema
 async function logout(){await sb.auth.signOut()}
 async function load(){
  const {data:p,error:pe}=await sb.from('profiles').select('*,investors(*)').eq('id',(await sb.auth.getUser()).data.user.id).single();if(pe){alert(pe.message);return}profile=p;
- const [ir,cr,pr]=await Promise.all([sb.from('investors').select('*').order('name'),sb.from('customers').select('*').order('created_at',{ascending:false}),sb.from('payments').select('*').order('payment_date',{ascending:false})]);
- if(ir.error||cr.error||pr.error){alert((ir.error||cr.error||pr.error).message);return}investors=ir.data||[];customers=cr.data||[];payments=pr.data||[];
+ const [ir,cr,pr,wr]=await Promise.all([
+   sb.from('investors').select('*').order('name'),
+   sb.from('customers').select('*').order('created_at',{ascending:false}),
+   sb.from('payments').select('*').order('payment_date',{ascending:false}),
+   sb.from('investor_withdrawals').select('*')
+ ]);
+ if(ir.error||cr.error||pr.error){alert((ir.error||cr.error||pr.error).message);return}
+ investors=ir.data||[];customers=cr.data||[];payments=pr.data||[]; withdrawals=wr.data||[];
  document.getElementById('loginView').classList.add('hidden');document.getElementById('app').classList.remove('hidden');
  welcome.textContent=(profile.role==='admin'?'Admin':'Investor')+' • '+(profile.full_name||'');
  adminBar.classList.toggle('hidden',profile.role!=='admin');investorBar.classList.toggle('hidden',profile.role==='admin');
@@ -104,16 +110,21 @@ function render(){
  count.textContent=list.length;
  principal.textContent=money(list.reduce((a,c)=>a+Number(c.principal),0));
  paid.textContent=money(list.reduce((a,c)=>a+paidFor(c.id),0));
- outstanding.textContent=money(list.reduce((a,c)=>a+calc(c).sisa,0));
 
- // Hitung Estimasi Total Laba dari SELURUH nasabah (termasuk belum lunas berdasarkan denda berjalan)
- let totalProfitAll = 0;
+ // Hitung laba terpisah: Lunas vs Belum Lunas
+ let realProfit = 0;
+ let pendingProfit = 0;
  customers.forEach(c => {
   let x = calc(c);
-  let estProfit = x.total - Number(c.principal); // Total tagihan (pokok + denda berjalan) dikurangi pokok
-  totalProfitAll += Math.max(0, estProfit);
+  let estProfit = Math.max(0, x.total - Number(c.principal));
+  if(isCustomerLunas(c)){
+    realProfit += estProfit;
+  } else {
+    pendingProfit += estProfit;
+  }
  });
- totalProfitCard.textContent = money(totalProfitAll);
+ realProfitCard.textContent = money(realProfit);
+ pendingProfitCard.textContent = money(pendingProfit);
  
  rows.innerHTML=list.map(c=>{
   let x=calc(c),inv=investors.find(i=>i.id===c.investor_id);
@@ -144,7 +155,7 @@ function render(){
   let totalCapital = Number(i.initial_capital || 0);
   let availableCapital = Math.max(0, totalCapital - activePrincipal);
 
-  // Hitung Estimasi Laba untuk masing-masing investor (mencakup semua nasabah milik investor ini, baik lunas maupun belum lunas)
+  // Total Laba nasabah investor ini (lunas + belum lunas)
   let estProfitInvestor = 0;
   cs.forEach(c => {
     let x = calc(c);
@@ -153,6 +164,8 @@ function render(){
   });
 
   let ip = estProfitInvestor * Number(i.share_percent) / 100;
+  let totalWithdrawn = withdrawals.filter(w=>w.investor_id===i.id).reduce((sum,w)=>sum+Number(w.amount),0);
+  let remainingClaim = Math.max(0, ip - totalWithdrawn);
   
   return `<tr>
     <td><b>${esc(i.name)}</b></td>
@@ -160,9 +173,13 @@ function render(){
     <td><span style="color:#d97706;font-weight:700">${money(activePrincipal)}</span></td>
     <td><span style="color:#16a34a;font-weight:700">${money(availableCapital)}</span></td>
     <td><b>${money(estProfitInvestor)}</b></td>
-    <td>${money(ip)} (${i.share_percent}%)</td>
-    <td>${money(estProfitInvestor - ip)}</td>
-    <td>${profile.role==='admin'?`<button class="btn gray" onclick="openInvestor('${i.id}')" style="margin-right:5px">Edit</button><button class="btn danger" onclick="deleteInvestor('${i.id}')">Hapus</button>`:''}</td>
+    <td><span style="color:#2563eb;font-weight:700">${money(ip)}</span> (${i.share_percent}%)</td>
+    <td><span style="color:#dc2626">${money(totalWithdrawn)}</span></td>
+    <td><span style="color:#16a34a;font-weight:700">${money(remainingClaim)}</span></td>
+    <td>${profile.role==='admin'?`
+      <button class="btn success" onclick="withdrawInvestor('${i.id}',${remainingClaim})" style="margin-right:3px;padding:6px 10px;font-size:12px">Withdraw</button>
+      <button class="btn gray" onclick="openInvestor('${i.id}')" style="margin-right:3px;padding:6px 10px;font-size:12px">Edit</button>
+      <button class="btn danger" onclick="deleteInvestor('${i.id}')" style="padding:6px 10px;font-size:12px">Hapus</button>`:''}</td>
   </tr>`
  }).join('');
 }
@@ -259,6 +276,30 @@ async function addPayment(id){
   refresh();
 }
 
+async function withdrawInvestor(investorId, maxAmount){
+  let inv = investors.find(i => i.id === investorId);
+  if(!inv) return;
+  let input = prompt(`Masukkan nominal penarikan (Withdraw) untuk ${inv.name}:\nMaksimal bisa ditarik: ${money(maxAmount)}`, maxAmount);
+  if(!input) return;
+  let amount = Number(input);
+  if(isNaN(amount) || amount <= 0){
+    alert('Nominal tidak valid.');
+    return;
+  }
+  if(amount > maxAmount){
+    alert(`Nominal penarikan melebihi sisa hak laba bersih (${money(maxAmount)}).`);
+    return;
+  }
+
+  let {error} = await sb.from('investor_withdrawals').insert({investor_id: investorId, amount: amount});
+  if(error){
+    alert('Gagal melakukan withdraw: ' + error.message);
+    return;
+  }
+  alert(`✅ Berhasil melakukan withdraw sebesar ${money(amount)} untuk ${inv.name}.`);
+  refresh();
+}
+
 function openInvestor(id=''){
   iid.value=id;
   investorTitleModal.textContent = id ? 'Edit Investor' : 'Tambah Investor';
@@ -304,6 +345,11 @@ async function deleteInvestor(id){
 
 async function refresh(){await load()}
 sb.auth.onAuthStateChange((_e,session)=>{if(session)load();else{app.classList.add('hidden');loginView.classList.remove('hidden')}});
-sb.channel('dapin-live').on('postgres_changes',{event:'*',schema:'public',table:'customers'},()=>load()).on('postgres_changes',{event:'*',schema:'public',table:'payments'},()=>load()).on('postgres_changes',{event:'*',schema:'public',table:'investors'},()=>load()).subscribe();
+sb.channel('dapin-live')
+  .on('postgres_changes',{event:'*',schema:'public',table:'customers'},()=>load())
+  .on('postgres_changes',{event:'*',schema:'public',table:'payments'},()=>load())
+  .on('postgres_changes',{event:'*',schema:'public',table:'investors'},()=>load())
+  .on('postgres_changes',{event:'*',schema:'public',table:'investor_withdrawals'},()=>load())
+  .subscribe();
 (async()=>{const {data}=await sb.auth.getSession();if(data.session)load()})();
 </script></body></html>
