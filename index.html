@@ -5,7 +5,7 @@
 <title>Dapin Belitang — Investor</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
-*{box-sizing:border-box}body{margin:0;font-family:Inter,Arial,sans-serif;background:#f3f6f9;color:#17202a}.wrap{max-width:1200px;margin:auto;padding:18px}.top{background:#111827;color:#fff;border-radius:18px;padding:22px;margin-bottom:16px}.top h1{margin:0 0 5px}.muted{color:#64748b}.top .muted{colorcbd5e1}.grid{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:16px}.card,.panel{background:#fff;border-radius:15px;padding:16px;box-shadow:0 2px 10px #0000000c}.card small{color:#64748b}.card strong{display:block;font-size:18px;margin-top:8px}.toolbar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}.toolbar>*{min-height:42px}.search{padding:10px;border:1px solid #d5dbe2;border-radius:10px}.btn{border:0;border-radius:10px;padding:10px 14px;font-weight:700;cursor:pointer}.primary{background:#2563eb;color:#fff}.danger{background:#dc2626;color:#fff}.gray{background:#e5e7eb;color:#111827}.success{background:#16a34a;color:#fff}.wa{background:#22c55e;color:#fff;text-decoration:none;display:inline-block;padding:6px 10px;font-size:12px;border-radius:10px;font-weight:700;text-align:center}.login{max-width:430px;margin:8vh auto}.login h1{margin-top:0}.field{margin:10px 0}.field label{display:block;font-size:13px;font-weight:700;margin-bottom:5px}.field input,.field select{width:100%;padding:12px;border:1px solid #d5dbe2;border-radius:10px}.hidden{display:none!important}.table-wrap{overflow:auto}table{width:100%;border-collapse:collapse;min-width:950px}th,td{padding:10px;border-bottom:1px solid #e5e7eb;text-align:left;font-size:13px}th{background:#f8fafc}.badge{padding:5px 8px;border-radius:999px;font-size:11px;font-weight:700}.ok{background:#dcfce7;color:#166534}.warn{background:#fee2e2;color:#991b1b}.modal{position:fixed;inset:0;background:#0008;display:none;padding:20px;overflow:auto}.modalbox{background:#fff;max-width:620px;margin:30px auto;padding:20px;border-radius:16px}.formgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.full{grid-column:1/-1}.note{background:#eff6ff;color:#1e40af;padding:10px;border-radius:10px;font-size:13px}@media(max-width:1000px){.grid{grid-template-columns:repeat(3,1fr)}}@media(max-width:800px){.grid{grid-template-columns:1fr 1fr}.formgrid{grid-template-columns:1fr}.full{grid-column:auto}}@media(max-width:500px){.grid{grid-template-columns:1fr}}
+*{box-sizing:border-box}body{margin:0;font-family:Inter,Arial,sans-serif;background:#f3f6f9;color:#17202a}.wrap{max-width:1200px;margin:auto;padding:18px}.top{background:#111827;color:#fff;border-radius:18px;padding:22px;margin-bottom:16px}.top h1{margin:0 0 5px}.muted{color:#64748b}.top .muted{color:#cbd5e1}.grid{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:16px}.card,.panel{background:#fff;border-radius:15px;padding:16px;box-shadow:0 2px 10px #0000000c}.card small{color:#64748b}.card strong{display:block;font-size:18px;margin-top:8px}.toolbar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}.toolbar>*{min-height:42px}.search{padding:10px;border:1px solid #d5dbe2;border-radius:10px}.btn{border:0;border-radius:10px;padding:10px 14px;font-weight:700;cursor:pointer}.primary{background:#2563eb;color:#fff}.danger{background:#dc2626;color:#fff}.gray{background:#e5e7eb;color:#111827}.success{background:#16a34a;color:#fff}.wa{background:#22c55e;color:#fff;text-decoration:none;display:inline-block;padding:6px 10px;font-size:12px;border-radius:10px;font-weight:700;text-align:center}.login{max-width:430px;margin:8vh auto}.login h1{margin-top:0}.field{margin:10px 0}.field label{display:block;font-size:13px;font-weight:700;margin-bottom:5px}.field input,.field select{width:100%;padding:12px;border:1px solid #d5dbe2;border-radius:10px}.hidden{display:none!important}.table-wrap{overflow:auto}table{width:100%;border-collapse:collapse;min-width:950px}th,td{padding:10px;border-bottom:1px solid #e5e7eb;text-align:left;font-size:13px}th{background:#f8fafc}.badge{padding:5px 8px;border-radius:999px;font-size:11px;font-weight:700}.ok{background:#dcfce7;color:#166534}.warn{background:#fee2e2;color:#991b1b}.modal{position:fixed;inset:0;background:#0008;display:none;padding:20px;overflow:auto}.modalbox{background:#fff;max-width:620px;margin:30px auto;padding:20px;border-radius:16px}.formgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.full{grid-column:1/-1}.note{background:#eff6ff;color:#1e40af;padding:10px;border-radius:10px;font-size:13px}@media(max-width:1000px){.grid{grid-template-columns:repeat(3,1fr)}}@media(max-width:800px){.grid{grid-template-columns:1fr 1fr}.formgrid{grid-template-columns:1fr}.full{grid-column:auto}}@media(max-width:500px){.grid{grid-template-columns:1fr}}
 </style></head>
 <body>
 <div id="loginView" class="wrap login"><div class="panel"><h1>🔐 Dapin Belitang</h1><p class="muted">Login admin atau investor.</p><div class="field"><label>Email</label><input id="email" type="email" autocomplete="username"></div><div class="field"><label>Password</label><input id="password" type="password" autocomplete="current-password"></div><button class="btn primary" style="width:100%" onclick="login()">Masuk</button><p id="loginMsg" class="muted"></p></div></div>
@@ -33,7 +33,7 @@
       <div class="field"><label>Nama</label><input id="cname" oninput="syncPhoneByName()"></div>
       <div class="field"><label>No. HP (Contoh: 08123456789)</label><input id="cphone"></div>
       <div class="field"><label>Pokok Pinjaman</label><input id="cprincipal" type="number"></div>
-      <div class="field"><label>Batas Max Hari (Tenor)</label><input id="cmaxdays" type="number" placeholder="Contoh: 7"></div>
+      <div class="field"><label>Batas Max Hari (Tenor)</label><input id="cmaxdays" type="number" placeholder="Contoh: 5"></div>
       <div class="field"><label>Tanggal Mulai</label><input id="cdate" type="date"></div>
       <div class="field full"><label>Tanggal Pelunasan (Menentukan Total Denda)</label><input id="csettled" type="date"></div>
       <div class="field full"><label>Catatan</label><input id="cnote"></div>
@@ -100,10 +100,9 @@ function getDays(c){
 function penalty(c){
   let d = getDays(c);
   let maxD = Number(c.max_days || 5);
-  let baseRate = d <= 5 ? 0.10 : 0.20;
   
-  // Jika hari berjalan melebihi max_days, tarif denda per hari dikali 2x lipat
-  let rate = d > maxD ? baseRate * 2 : baseRate;
+  // Jika hari berjalan melebihi max_days, tarif denda per hari menjadi 20% (0.20), jika tidak 10% (0.10)
+  let rate = d > maxD ? 0.20 : 0.10;
   
   return Number(c.principal) * rate * d;
 }
@@ -186,7 +185,7 @@ function render(){
      groupList.forEach((c, idx) => {
        let x = calc(c);
        if(!isCustomerLunas(c)){
-         let statusMax = x.days > Number(c.max_days||5) ? ' (⚠️ Melebihi Max Hari / Denda 2x)' : '';
+         let statusMax = x.days > Number(c.max_days||5) ? ' (⚠️ Melebihi Max Hari / Denda 20%)' : '';
          msg += `\n📌 *Pinjaman #${idx+1}*\n- Mulai: ${dateFmt(c.start_date)} (${x.days} Hari${statusMax})\n- Pokok: ${money(c.principal)}\n- Denda: ${money(x.pen)}\n- Dibayar: ${money(x.paid)}\n- Sisa: *${money(x.sisa)}*\n`;
        }
      });
@@ -209,7 +208,7 @@ function render(){
        let cleanPhone = c.phone.replace(/\D/g,'');
        if(cleanPhone.startsWith('0')) cleanPhone = '62' + cleanPhone.slice(1);
        
-       let statusMaxText = x.days > Number(c.max_days||5) ? ' (⚠️ Melebihi Batas Max Hari / Bunga 2x Lipat)' : '';
+       let statusMaxText = x.days > Number(c.max_days||5) ? ' (⚠️ Melebihi Batas Max Hari / Bunga 20%)' : '';
        let msg = `Halo Bapak/Ibu *${c.name}*,\n\nIni adalah pengingat otomatis dari *Dapin Belitang* bahwa pinjaman Anda telah berjalan selama *${x.days} hari*${statusMaxText} dan status saat ini *BELUM LUNAS*.\n\n📋 *Rincian Tagihan:*\n- Tanggal Mulai: ${dateFmt(c.start_date)}\n- Batas Max Hari: ${c.max_days||5} Hari\n- Pokok Pinjaman: ${money(c.principal)}\n- Denda Berjalan: ${money(x.pen)}\n- Total Sudah Dibayar: ${money(x.paid)}\n📌 *Sisa Hutang Saat Ini: ${money(x.sisa)}*\n\nMohon segera melakukan pelunasan. Terima kasih!`;
        
        let waUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}`;
