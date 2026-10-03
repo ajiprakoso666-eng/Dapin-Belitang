@@ -18,7 +18,7 @@
 <div class="panel"><h2>Ringkasan Bagi Hasil</h2><div class="table-wrap"><table><thead><tr><th>Investor</th><th>Modal/Pokok</th><th>Laba Terealisasi</th><th>Bagi Hasil Investor</th><th>Bagian Dapin</th></tr></thead><tbody id="investorRows"></tbody></table></div></div>
 </div>
 <div id="customerModal" class="modal"><div class="modalbox"><h2 id="customerTitle">Nasabah</h2><div class="formgrid"><input type="hidden" id="cid"><div class="field full"><label>Investor</label><select id="cinv"></select></div><div class="field"><label>Nama</label><input id="cname"></div><div class="field"><label>No. HP</label><input id="cphone"></div><div class="field"><label>Pokok</label><input id="cprincipal" type="number"></div><div class="field"><label>Tanggal Mulai</label><input id="cdate" type="date"></div><div class="field full"><label>Catatan</label><input id="cnote"></div></div><div class="toolbar" style="justify-content:flex-end;margin-top:10px"><button class="btn gray" onclick="closeModal('customerModal')">Batal</button><button class="btn primary" onclick="saveCustomer()">Simpan</button></div></div></div>
-<div id="investorModal" class="modal"><div class="modalbox"><h2>Investor</h2><input type="hidden" id="iid"><div class="field"><label>Nama Investor</label><input id="iname"></div><div class="field"><label>Bagi Hasil Investor (%)</label><input id="ishare" type="number" min="0" max="100" step="0.01"></div><div class="toolbar" style="justify-content:flex-end"><button class="btn gray" onclick="closeModal('investorModal')">Batal</button><button class="btn primary" onclick="saveInvestor()">Simpan</button></div></div></div>
+<div id="investorModal" class="modal"><div class="modalbox"><h2>Investor</h2><input type="hidden" id="iid"><div class="field"><label>Nama Investor</label><input id="iname"></div><div class="field"><label>Bagi Hasil Investor (%)</label><input id="ishare" type="number" min="0" max="100" step="0.01"></div><div class="field"><label>Password Login Investor</label><input id="ipassword" type="password" placeholder="Minimal 8 karakter"></div><div class="toolbar" style="justify-content:flex-end"><button class="btn gray" onclick="closeModal('investorModal')">Batal</button><button class="btn primary" onclick="saveInvestor()">Simpan</button></div></div></div>
 <script>
 const SUPABASE_URL='https://chqdgxjdfbsatzoivpwb.supabase.co';const SUPABASE_KEY='sb_publishable_vq_6la2B3uYk1c2SdXQYyw_KTe0QJCy';
 const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
@@ -51,8 +51,44 @@ function openCustomer(id=''){cid.value=id;customerTitle.textContent=id?'Edit Nas
 function closeModal(id){document.getElementById(id).style.display='none'}
 async function saveCustomer(){let id=cid.value,data={investor_id:cinv.value,name:cname.value.trim(),phone:cphone.value.trim(),principal:Number(cprincipal.value),start_date:cdate.value,notes:cnote.value.trim()};let r=id?await sb.from('customers').update(data).eq('id',id):await sb.from('customers').insert(data);if(r.error)alert(r.error.message);else{closeModal('customerModal');refresh()}}
 async function addPayment(id){let amount=prompt('Nominal pembayaran:');if(!amount)return;let r=await sb.from('payments').insert({customer_id:id,amount:Number(amount),payment_date:new Date().toISOString().slice(0,10)});if(r.error)alert(r.error.message);else refresh()}
-function openInvestor(id=''){iid.value=id;iname.value=id?investors.find(x=>x.id===id)?.name:'';ishare.value=id?investors.find(x=>x.id===id)?.share_percent:50;investorModal.style.display='block'}
-async function saveInvestor(){let data={name:iname.value.trim(),share_percent:Number(ishare.value)};let r=iid.value?await sb.from('investors').update(data).eq('id',iid.value):await sb.from('investors').insert(data);if(r.error)alert(r.error.message);else{closeModal('investorModal');refresh()}}
+function openInvestor(id=''){iid.value=id;iname.value=id?investors.find(x=>x.id===id)?.name:'';ishare.value=id?investors.find(x=>x.id===id)?.share_percent:50;ipassword.value='';investorModal.style.display='block'}
+async function saveInvestor(){
+  let data={
+    name:iname.value.trim(),
+    share_percent:Number(ishare.value)
+  };
+
+  let r=iid.value
+    ? await sb.from('investors').update(data).eq('id',iid.value)
+    : await sb.from('investors').insert(data);
+
+  if(r.error){
+    alert(r.error.message);
+    return;
+  }
+
+  const password=ipassword.value.trim();
+
+  if(password){
+    if(password.length<8){
+      alert('Password minimal 8 karakter');
+      return;
+    }
+
+    const {error:fnError}=await sb.functions.invoke(
+      'set-investor-password',
+      {body:{password}}
+    );
+
+    if(fnError){
+      alert('Gagal mengatur password: '+fnError.message);
+      return;
+    }
+  }
+
+  closeModal('investorModal');
+  refresh();
+}
 async function refresh(){await load()}
 sb.auth.onAuthStateChange((_e,session)=>{if(session)load();else{app.classList.add('hidden');loginView.classList.remove('hidden')}});
 sb.channel('dapin-live').on('postgres_changes',{event:'*',schema:'public',table:'customers'},()=>load()).on('postgres_changes',{event:'*',schema:'public',table:'payments'},()=>load()).on('postgres_changes',{event:'*',schema:'public',table:'investors'},()=>load()).subscribe();
