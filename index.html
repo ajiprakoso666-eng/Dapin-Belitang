@@ -30,7 +30,7 @@
     <div class="formgrid">
       <input type="hidden" id="cid">
       <div class="field full"><label>Investor</label><select id="cinv"></select></div>
-      <div class="field"><label>Nama</label><input id="cname"></div>
+      <div class="field"><label>Nama</label><input id="cname" oninput="syncPhoneByName()"></div>
       <div class="field"><label>No. HP (Contoh: 08123456789)</label><input id="cphone"></div>
       <div class="field"><label>Pokok Pinjaman</label><input id="cprincipal" type="number"></div>
       <div class="field"><label>Tanggal Mulai</label><input id="cdate" type="date"></div>
@@ -111,6 +111,17 @@ function isCustomerLunas(c){
   return x.sisa === 0 || !!c.settled_date;
 }
 
+// Fungsi otomatis sinkronisasi nomor HP jika nama nasabah sama
+function syncPhoneByName(){
+  let typedName = cname.value.trim().toLowerCase();
+  if(!typedName) return;
+  // Cari nasabah lain yang memiliki nama sama dan sudah punya nomor HP
+  let found = customers.find(c => c.name.trim().toLowerCase() === typedName && c.phone && c.phone.trim() !== '');
+  if(found){
+    cphone.value = found.phone;
+  }
+}
+
 async function login(){const {error}=await sb.auth.signInWithPassword({email:email.value,password:password.value});loginMsg.textContent=error?error.message:''}
 async function logout(){await sb.auth.signOut()}
 async function load(){
@@ -153,10 +164,10 @@ function render(){
   let lunas = isCustomerLunas(c);
   let settledDisplay = c.settled_date ? dateFmt(c.settled_date) : (lunas ? '<span class="muted" style="font-size:11px">Belum diset</span>' : '-');
   
-  // Deteksi apakah sudah hari ke-6 atau lebih DAN belum lunas
-  let isDaySixOrMore = x.days >= 6 && !lunas;
+  // Deteksi Otomatis Hari Ke-1 atau lebih DAN belum lunas
+  let isDayOneOrMore = x.days >= 1 && !lunas;
   let waButton = '';
-  if(isDaySixOrMore && c.phone){
+  if(isDayOneOrMore && c.phone){
     let cleanPhone = c.phone.replace(/\D/g,'');
     if(cleanPhone.startsWith('0')) cleanPhone = '62' + cleanPhone.slice(1);
     let msg = `Halo Bapak/Ibu *${c.name}*,\n\nIni adalah pengingat otomatis dari *Dapin Belitang* bahwa pinjaman Anda telah berjalan selama *${x.days} hari* dan status saat ini *BELUM LUNAS*.\n\n📋 *Rincian Tagihan:*\n- Tanggal Mulai: ${dateFmt(c.start_date)}\n- Pokok Pinjaman: ${money(c.principal)}\n- Denda Berjalan (${x.days} Hari): ${money(x.pen)}\n- Total Sudah Dibayar: ${money(x.paid)}\n📌 *Sisa Hutang Saat Ini: ${money(x.sisa)}*\n\nMohon segera melakukan pelunasan. Terima kasih!`;
