@@ -21,7 +21,7 @@
 <div id="adminBar" class="toolbar hidden"><button class="btn primary" onclick="openCustomer()">＋ Nasabah</button><button class="btn primary" onclick="openInvestor()">＋ Investor</button><button class="btn gray" onclick="refresh()">↻ Refresh</button><button class="btn danger" onclick="logout()">Keluar</button></div>
 <div id="investorBar" class="toolbar hidden"><span id="investorName" class="btn gray"></span><button class="btn gray" onclick="refresh()">↻ Refresh</button><button class="btn danger" onclick="logout()">Keluar</button></div>
 <div class="panel"><div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap"><h2>Daftar Nasabah</h2><input id="search" class="search" placeholder="Cari nasabah..." oninput="render()"></div><div class="table-wrap"><table><thead><tr><th>Nasabah</th><th>Investor</th><th>Mulai</th><th>Pokok</th><th>Hari</th><th>Denda</th><th>Dibayar</th><th>Sisa</th><th>Tgl Lunas</th><th>Status</th><th id="actHead">Aksi</th></tr></thead><tbody id="rows"></tbody></table></div></div>
-<div class="panel"><h2>Ringkasan Bagi Hasil & Modal Investor</h2><div class="table-wrap"><table><thead><tr><th>Investor</th><th>Total Modal</th><th>Modal Aktif</th><th>Modal Sisa</th><th>Total Laba (Lunas + Est)</th><th>Hak Investor (Bersih)</th><th>Sudah Di-Withdraw</th><th>Sisa Hak Bisa Ditarik</th><th>Aksi</th></tr></thead><tbody id="investorRows"></tbody></table></div></div>
+<div class="panel"><h2>Ringkasan Bagi Hasil & Modal Investor</h2><div class="table-wrap"><table><thead><tr><th>Investor</th><th>Total Modal</th><th>Modal Aktif</th><th>Modal Sisa</th><th>Total Laba (Lunas + Est)</th><th>Hak Investor (Bersih)</th><th>Sudah Di-Withdraw (Lunas)</th><th>Saldo Laba Lunas Bisa Ditarik</th><th>Aksi</th></tr></thead><tbody id="investorRows"></tbody></table></div></div>
 </div>
 
 <div id="customerModal" class="modal">
@@ -155,25 +155,33 @@ function render(){
   let totalCapital = Number(i.initial_capital || 0);
   let availableCapital = Math.max(0, totalCapital - activePrincipal);
 
-  // Total Laba nasabah investor ini (lunas + belum lunas)
+  // Total Laba (Semua: Lunas + Belum Lunas)
   let estProfitInvestor = 0;
+  // Khusus Laba Lunas
+  let settledProfitInvestor = 0;
+
   cs.forEach(c => {
     let x = calc(c);
-    let est = x.total - Number(c.principal);
-    estProfitInvestor += Math.max(0, est);
+    let est = Math.max(0, x.total - Number(c.principal));
+    estProfitInvestor += est;
+    if(isCustomerLunas(c)){
+      settledProfitInvestor += est;
+    }
   });
 
-  let ip = estProfitInvestor * Number(i.share_percent) / 100;
+  let ipTotal = estProfitInvestor * Number(i.share_percent) / 100;
+  let ipSettled = settledProfitInvestor * Number(i.share_percent) / 100; // Hak Investor khusus dari Laba Lunas
+
   let totalWithdrawn = withdrawals.filter(w=>w.investor_id===i.id).reduce((sum,w)=>sum+Number(w.amount),0);
-  let remainingClaim = Math.max(0, ip - totalWithdrawn);
+  let remainingClaim = Math.max(0, ipSettled - totalWithdrawn); // Sisa dari hak laba lunas dikurangi withdraw
   
   return `<tr>
     <td><b>${esc(i.name)}</b></td>
     <td>${money(totalCapital)}</td>
     <td><span style="color:#d97706;font-weight:700">${money(activePrincipal)}</span></td>
     <td><span style="color:#16a34a;font-weight:700">${money(availableCapital)}</span></td>
-    <td><b>${money(estProfitInvestor)}</b></td>
-    <td><span style="color:#2563eb;font-weight:700">${money(ip)}</span> (${i.share_percent}%)</td>
+    <td><b>${money(ipTotal)}</b></td>
+    <td><span style="color:#2563eb;font-weight:700">${money(ipSettled)}</span> (${i.share_percent}%)</td>
     <td><span style="color:#dc2626">${money(totalWithdrawn)}</span></td>
     <td><span style="color:#16a34a;font-weight:700">${money(remainingClaim)}</span></td>
     <td>${profile.role==='admin'?`
@@ -279,7 +287,7 @@ async function addPayment(id){
 async function withdrawInvestor(investorId, maxAmount){
   let inv = investors.find(i => i.id === investorId);
   if(!inv) return;
-  let input = prompt(`Masukkan nominal penarikan (Withdraw) untuk ${inv.name}:\nMaksimal bisa ditarik: ${money(maxAmount)}`, maxAmount);
+  let input = prompt(`Masukkan nominal penarikan (Withdraw) untuk ${inv.name}:\nMaksimal bisa ditarik (dari laba lunas): ${money(maxAmount)}`, maxAmount);
   if(!input) return;
   let amount = Number(input);
   if(isNaN(amount) || amount <= 0){
@@ -287,7 +295,7 @@ async function withdrawInvestor(investorId, maxAmount){
     return;
   }
   if(amount > maxAmount){
-    alert(`Nominal penarikan melebihi sisa hak laba bersih (${money(maxAmount)}).`);
+    alert(`Nominal penarikan melebihi sisa saldo laba lunas (${money(maxAmount)}).`);
     return;
   }
 
