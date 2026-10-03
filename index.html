@@ -15,7 +15,7 @@
 <div id="adminBar" class="toolbar hidden"><button class="btn primary" onclick="openCustomer()">＋ Nasabah</button><button class="btn primary" onclick="openInvestor()">＋ Investor</button><button class="btn gray" onclick="refresh()">↻ Refresh</button><button class="btn danger" onclick="logout()">Keluar</button></div>
 <div id="investorBar" class="toolbar hidden"><span id="investorName" class="btn gray"></span><button class="btn gray" onclick="refresh()">↻ Refresh</button><button class="btn danger" onclick="logout()">Keluar</button></div>
 <div class="panel"><div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap"><h2>Daftar Nasabah</h2><input id="search" class="search" placeholder="Cari nasabah..." oninput="render()"></div><div class="table-wrap"><table><thead><tr><th>Nasabah</th><th>Investor</th><th>Mulai</th><th>Pokok</th><th>Hari</th><th>Denda</th><th>Dibayar</th><th>Sisa</th><th>Tgl Lunas</th><th>Status</th><th id="actHead">Aksi</th></tr></thead><tbody id="rows"></tbody></table></div></div>
-<div class="panel"><h2>Ringkasan Bagi Hasil</h2><div class="table-wrap"><table><thead><tr><th>Investor</th><th>Modal/Pokok</th><th>Laba Terealisasi</th><th>Bagi Hasil Investor</th><th>Bagian Dapin</th><th>Aksi</th></tr></thead><tbody id="investorRows"></tbody></table></div></div>
+<div class="panel"><h2>Ringkasan Bagi Hasil & Modal Investor</h2><div class="table-wrap"><table><thead><tr><th>Investor</th><th>Total Modal</th><th>Modal Terpakai (Aktif)</th><th>Modal Sisa (Standby)</th><th>Laba Terealisasi</th><th>Bagi Hasil Investor</th><th>Bagian Dapin</th><th>Aksi</th></tr></thead><tbody id="investorRows"></tbody></table></div></div>
 </div>
 
 <div id="customerModal" class="modal">
@@ -26,7 +26,7 @@
       <div class="field full"><label>Investor</label><select id="cinv"></select></div>
       <div class="field"><label>Nama</label><input id="cname"></div>
       <div class="field"><label>No. HP</label><input id="cphone"></div>
-      <div class="field"><label>Pokok</label><input id="cprincipal" type="number"></div>
+      <div class="field"><label>Pokok Pinjaman</label><input id="cprincipal" type="number"></div>
       <div class="field"><label>Tanggal Mulai</label><input id="cdate" type="date"></div>
       <div class="field full"><label>Tanggal Pelunasan (Menentukan Total Denda)</label><input id="csettled" type="date"></div>
       <div class="field full"><label>Catatan</label><input id="cnote"></div>
@@ -40,10 +40,11 @@
 
 <div id="investorModal" class="modal">
   <div class="modalbox">
-    <h2>Investor</h2>
+    <h2 id="investorTitleModal">Investor</h2>
     <input type="hidden" id="iid">
     <div class="field"><label>Nama Investor</label><input id="iname"></div>
     <div class="field"><label>Email</label><input id="iemail" type="email"></div>
+    <div class="field"><label>Total Modal (Rp)</label><input id="icapital" type="number" placeholder="Contoh: 10000000"></div>
     <div class="field"><label>Bagi Hasil (%)</label><input id="ishare" type="number"></div>
     <div class="field"><label>Password Login</label><input id="ipassword" type="password" autocomplete="new-password" placeholder="Minimal 8 karakter (kosongkan jika tidak diubah)"></div>
     <div class="toolbar" style="justify-content:flex-end;margin-top:10px">
@@ -77,6 +78,12 @@ function penalty(c){
 function paidFor(id){return payments.filter(p=>p.customer_id===id).reduce((a,p)=>a+Number(p.amount),0)}
 function calc(c){let d=getDays(c),pen=penalty(c),paid=paidFor(c.id),total=Number(c.principal)+pen;return {days:d,pen,paid,total,sisa:Math.max(0,total-paid)}}
 
+// Helper untuk mengecek apakah nasabah sudah lunas (berdasarkan sisa pembayaran atau adanya settled_date)
+function isCustomerLunas(c){
+  let x = calc(c);
+  return x.sisa === 0 || !!c.settled_date;
+}
+
 async function login(){const {error}=await sb.auth.signInWithPassword({email:email.value,password:password.value});loginMsg.textContent=error?error.message:''}
 async function logout(){await sb.auth.signOut()}
 async function load(){
@@ -94,8 +101,8 @@ function render(){
  
  rows.innerHTML=list.map(c=>{
   let x=calc(c),inv=investors.find(i=>i.id===c.investor_id);
-  let isLunas = x.sisa === 0;
-  let settledDisplay = c.settled_date ? dateFmt(c.settled_date) : (isLunas ? '<span class="muted" style="font-size:11px">Belum diset</span>' : '-');
+  let lunas = isCustomerLunas(c);
+  let settledDisplay = c.settled_date ? dateFmt(c.settled_date) : (lunas ? '<span class="muted" style="font-size:11px">Belum diset</span>' : '-');
   
   return `<tr>
    <td><b>${esc(c.name)}</b><br><small>${esc(c.phone||'')}</small></td>
@@ -107,7 +114,7 @@ function render(){
    <td>${money(x.paid)}</td>
    <td><b>${money(x.sisa)}</b></td>
    <td>${settledDisplay}</td>
-   <td><span class="badge ${isLunas?'ok':'warn'}">${isLunas?'LUNAS':'BELUM LUNAS'}</span></td>
+   <td><span class="badge ${lunas?'ok':'warn'}">${lunas?'LUNAS':'BELUM LUNAS'}</span></td>
    <td class="${profile.role==='admin'?'':'hidden'}">
     <button class="btn gray" onclick="openCustomer('${c.id}')">Edit</button> 
     <button class="btn primary" onclick="addPayment('${c.id}')">Bayar</button>
@@ -115,14 +122,50 @@ function render(){
   </tr>`
  }).join('')||'<tr><td colspan="11" class="muted">Tidak ada data.</td></tr>';
 
- investorRows.innerHTML=investors.filter(i=>profile.role==='admin'||i.id===profile.investor_id).map(i=>{let cs=customers.filter(c=>c.investor_id===i.id),profit=0;cs.forEach(c=>{let x=calc(c);profit+=Math.max(0,x.paid-Number(c.principal))});let ip=profit*Number(i.share_percent)/100;return `<tr><td>${esc(i.name)}</td><td>${money(cs.reduce((a,c)=>a+Number(c.principal),0))}</td><td>${money(profit)}</td><td>${money(ip)} (${i.share_percent}%)</td><td>${money(profit-ip)}</td><td>${profile.role==='admin'?`<button class="btn gray" onclick="openInvestor('${i.id}')" style="margin-right:5px">Edit</button><button class="btn danger" onclick="deleteInvestor('${i.id}')">Hapus</button>`:''}</td></tr>`}).join('');
+ investorRows.innerHTML=investors.filter(i=>profile.role==='admin'||i.id===profile.investor_id).map(i=>{
+  let cs=customers.filter(c=>c.investor_id===i.id);
+  
+  // Modal terpakai adalah total pokok dari nasabah MILIK INVESTOR INI yang BELUM LUNAS
+  let activePrincipal = cs.filter(c => !isCustomerLunas(c)).reduce((a,c)=>a+Number(c.principal),0);
+  let totalCapital = Number(i.initial_capital || 0);
+  let availableCapital = Math.max(0, totalCapital - activePrincipal);
+
+  let profit=0;
+  cs.forEach(c=>{let x=calc(c);profit+=Math.max(0,x.paid-Number(c.principal))});
+  let ip=profit*Number(i.share_percent)/100;
+  
+  return `<tr>
+    <td><b>${esc(i.name)}</b></td>
+    <td>${money(totalCapital)}</td>
+    <td><span style="color:#d97706;font-weight:700">${money(activePrincipal)}</span></td>
+    <td><span style="color:#16a34a;font-weight:700">${money(availableCapital)}</span></td>
+    <td>${money(profit)}</td>
+    <td>${money(ip)} (${i.share_percent}%)</td>
+    <td>${money(profit-ip)}</td>
+    <td>${profile.role==='admin'?`<button class="btn gray" onclick="openInvestor('${i.id}')" style="margin-right:5px">Edit</button><button class="btn danger" onclick="deleteInvestor('${i.id}')">Hapus</button>`:''}</td>
+  </tr>`
+ }).join('');
 }
 function esc(s){return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'} [m]))}
 
 function openCustomer(id=''){
   cid.value=id;
   customerTitle.textContent=id?'Edit Nasabah':'Nasabah Baru';
-  cinv.innerHTML=investors.map(i=>`<option value="${i.id}">${esc(i.name)}</option>`).join('');
+  cinv.innerHTML=investors.map(i=>{
+    // Hitung sisa modal standby investor tersebut di dropdown pilihan
+    let cs=customers.filter(c=>c.investor_id===i.id);
+    let activePrincipal = cs.filter(c => !isCustomerLunas(c)).reduce((a,c)=>a+Number(c.principal),0);
+    if(id){
+      let currentC = customers.find(x=>x.id===id);
+      if(currentC && currentC.investor_id === i.id) {
+        // Jika sedang edit nasabah ini, kecualikan pokok nasabah ini dari modal terpakai agar tidak doublehitung
+        activePrincipal -= Number(currentC.principal);
+      }
+    }
+    let available = Math.max(0, Number(i.initial_capital||0) - activePrincipal);
+    return `<option value="${i.id}">${esc(i.name)} (Sisa Modal: ${money(available)})</option>`;
+  }).join('');
+
   if(id){
     let c=customers.find(x=>x.id===id);
     cinv.value=c.investor_id;
@@ -147,14 +190,35 @@ function closeModal(id){document.getElementById(id).style.display='none'}
 
 async function saveCustomer(){
   let id=cid.value;
+  let investorId = cinv.value;
+  let principalInput = Number(cprincipal.value);
+
+  // VALIDASI PEMBATAS MODAL
+  let targetInvestor = investors.find(i => i.id === investorId);
+  if(targetInvestor){
+    let cs = customers.filter(c => c.investor_id === investorId);
+    let activePrincipal = cs.filter(c => !isCustomerLunas(c)).reduce((a,c) => a + Number(c.principal), 0);
+    if(id){
+      let currentC = customers.find(x => x.id === id);
+      if(currentC && currentC.investor_id === investorId){
+        activePrincipal -= Number(currentC.principal);
+      }
+    }
+    let availableCapital = Math.max(0, Number(targetInvestor.initial_capital || 0) - activePrincipal);
+    if(principalInput > availableCapital){
+      alert(`❌ Modal investor tidak mencukupi!\n\nInvestor ${targetInvestor.name} hanya memiliki sisa modal aktif sebesar ${money(availableCapital)}.`);
+      return;
+    }
+  }
+
   let data={
-    investor_id:cinv.value,
-    name:cname.value.trim(),
-    phone:cphone.value.trim(),
-    principal:Number(cprincipal.value),
-    start_date:cdate.value,
-    settled_date:csettled.value?csettled.value:null,
-    notes:cnote.value.trim()
+    investor_id: investorId,
+    name: cname.value.trim(),
+    phone: cphone.value.trim(),
+    principal: principalInput,
+    start_date: cdate.value,
+    settled_date: csettled.value?csettled.value:null,
+    notes: cnote.value.trim()
   };
   let r=id?await sb.from('customers').update(data).eq('id',id):await sb.from('customers').insert(data);
   if(r.error)alert(r.error.message);else{closeModal('customerModal');refresh()}
@@ -173,7 +237,7 @@ async function addPayment(id){
   let x = calc(c);
   
   if(x.sisa === 0 && !c.settled_date){
-    // Otomatis set tanggal pelunasan ke hari pembayaran terakhir
+    // Otomatis set tanggal pelunasan ke hari pembayaran terakhir sehingga modal kembali ke investor
     await sb.from('customers').update({settled_date: today}).eq('id', id);
   }
 
@@ -182,8 +246,10 @@ async function addPayment(id){
 
 function openInvestor(id=''){
   iid.value=id;
+  investorTitleModal.textContent = id ? 'Edit Investor' : 'Tambah Investor';
   iname.value=id?investors.find(x=>x.id===id)?.name||'':'';
   iemail.value=id?investors.find(x=>x.id===id)?.email||'':'';
+  icapital.value=id?investors.find(x=>x.id===id)?.initial_capital||'':'';
   ishare.value=id?investors.find(x=>x.id===id)?.share_percent||'':'';
   ipassword.value='';
   ipassword.type='text';
@@ -195,6 +261,7 @@ async function saveInvestor(){
   let data = {
     name: iname.value.trim(),
     email: iemail.value.trim(),
+    initial_capital: Number(icapital.value),
     share_percent: Number(ishare.value)
   };
   let isNew = !iid.value;
