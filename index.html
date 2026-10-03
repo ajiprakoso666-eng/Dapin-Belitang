@@ -100,11 +100,16 @@ function getDays(c){
 function penalty(c){
   let d = getDays(c);
   let maxD = Number(c.max_days || 5);
-  
-  // Jika hari berjalan melebihi max_days, tarif denda per hari menjadi 20% (0.20), jika tidak 10% (0.10)
-  let rate = d > maxD ? 0.20 : 0.10;
-  
-  return Number(c.principal) * rate * d;
+  let principal = Number(c.principal);
+  let normalRate = 0.10; // 10% per hari
+  let doubleRate = 0.20; // 20% per hari (2x lipat)
+
+  let totalPen = 0;
+  for(let i = 1; i <= d; i++){
+    let rate = i > maxD ? doubleRate : normalRate;
+    totalPen += principal * rate;
+  }
+  return totalPen;
 }
 
 function paidFor(id){return payments.filter(p=>p.customer_id===id).reduce((a,p)=>a+Number(p.amount),0)}
@@ -185,7 +190,7 @@ function render(){
      groupList.forEach((c, idx) => {
        let x = calc(c);
        if(!isCustomerLunas(c)){
-         let statusMax = x.days > Number(c.max_days||5) ? ' (⚠️ Melebihi Max Hari / Denda 20%)' : '';
+         let statusMax = x.days > Number(c.max_days||5) ? ' (⚠️ Melebihi Max Hari / Denda 2x)' : '';
          msg += `\n📌 *Pinjaman #${idx+1}*\n- Mulai: ${dateFmt(c.start_date)} (${x.days} Hari${statusMax})\n- Pokok: ${money(c.principal)}\n- Denda: ${money(x.pen)}\n- Dibayar: ${money(x.paid)}\n- Sisa: *${money(x.sisa)}*\n`;
        }
      });
@@ -208,7 +213,7 @@ function render(){
        let cleanPhone = c.phone.replace(/\D/g,'');
        if(cleanPhone.startsWith('0')) cleanPhone = '62' + cleanPhone.slice(1);
        
-       let statusMaxText = x.days > Number(c.max_days||5) ? ' (⚠️ Melebihi Batas Max Hari / Bunga 20%)' : '';
+       let statusMaxText = x.days > Number(c.max_days||5) ? ' (⚠️ Melebihi Batas Max Hari / Bunga 2x Lipat)' : '';
        let msg = `Halo Bapak/Ibu *${c.name}*,\n\nIni adalah pengingat otomatis dari *Dapin Belitang* bahwa pinjaman Anda telah berjalan selama *${x.days} hari*${statusMaxText} dan status saat ini *BELUM LUNAS*.\n\n📋 *Rincian Tagihan:*\n- Tanggal Mulai: ${dateFmt(c.start_date)}\n- Batas Max Hari: ${c.max_days||5} Hari\n- Pokok Pinjaman: ${money(c.principal)}\n- Denda Berjalan: ${money(x.pen)}\n- Total Sudah Dibayar: ${money(x.paid)}\n📌 *Sisa Hutang Saat Ini: ${money(x.sisa)}*\n\nMohon segera melakukan pelunasan. Terima kasih!`;
        
        let waUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}`;
