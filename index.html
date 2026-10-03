@@ -50,8 +50,27 @@
     <input type="hidden" id="iid">
     <div class="field"><label>Nama Investor</label><input id="iname"></div>
     <div class="field"><label>Email</label><input id="iemail" type="email"></div>
-    <div class="field"><label>Total Modal (Rp)</label><input id="icapital" type="number" placeholder="Contoh: 10000000"></div>
     <div class="field"><label>Bagi Hasil (%)</label><input id="ishare" type="number"></div>
+    
+    <!-- Bagian Penyesuaian Modal (+ / -) -->
+    <div class="field full" style="background:#f8fafc;padding:12px;border-radius:10px;border:1px solid #e2e8f0;">
+      <label id="capitalInfoLabel" style="color:#2563eb;margin-bottom:8px">Total Modal Saat Ini: Rp0</label>
+      <div style="display:flex;gap:10px;align-items:center">
+        <div style="flex:1">
+          <label>Aksi Modal</label>
+          <select id="capitalAction">
+            <option value="set">Set / Ubah Total Langsung</option>
+            <option value="add">Tambah Modal (+)</option>
+            <option value="sub">Kurangi Modal (-)</option>
+          </select>
+        </div>
+        <div style="flex:1">
+          <label>Nominal (Rp)</label>
+          <input id="icapital" type="number" placeholder="0">
+        </div>
+      </div>
+    </div>
+
     <div class="field"><label>Password Login</label><input id="ipassword" type="password" autocomplete="new-password" placeholder="Minimal 8 karakter (kosongkan jika tidak diubah)"></div>
     <div class="toolbar" style="justify-content:flex-end;margin-top:10px">
       <button class="btn gray" onclick="closeModal('investorModal')">Batal</button>
@@ -111,7 +130,6 @@ function render(){
  principal.textContent=money(list.reduce((a,c)=>a+Number(c.principal),0));
  paid.textContent=money(list.reduce((a,c)=>a+paidFor(c.id),0));
 
- // Hitung laba terpisah: Lunas vs Belum Lunas
  let realProfit = 0;
  let pendingProfit = 0;
  customers.forEach(c => {
@@ -155,9 +173,7 @@ function render(){
   let totalCapital = Number(i.initial_capital || 0);
   let availableCapital = Math.max(0, totalCapital - activePrincipal);
 
-  // Total Laba (Semua: Lunas + Belum Lunas)
   let estProfitInvestor = 0;
-  // Khusus Laba Lunas
   let settledProfitInvestor = 0;
 
   cs.forEach(c => {
@@ -170,10 +186,10 @@ function render(){
   });
 
   let ipTotal = estProfitInvestor * Number(i.share_percent) / 100;
-  let ipSettled = settledProfitInvestor * Number(i.share_percent) / 100; // Hak Investor khusus dari Laba Lunas
+  let ipSettled = settledProfitInvestor * Number(i.share_percent) / 100;
 
   let totalWithdrawn = withdrawals.filter(w=>w.investor_id===i.id).reduce((sum,w)=>sum+Number(w.amount),0);
-  let remainingClaim = Math.max(0, ipSettled - totalWithdrawn); // Sisa dari hak laba lunas dikurangi withdraw
+  let remainingClaim = Math.max(0, ipSettled - totalWithdrawn);
   
   return `<tr>
     <td><b>${esc(i.name)}</b></td>
@@ -311,10 +327,16 @@ async function withdrawInvestor(investorId, maxAmount){
 function openInvestor(id=''){
   iid.value=id;
   investorTitleModal.textContent = id ? 'Edit Investor' : 'Tambah Investor';
-  iname.value=id?investors.find(x=>x.id===id)?.name||'':'';
-  iemail.value=id?investors.find(x=>x.id===id)?.email||'':'';
-  icapital.value=id?investors.find(x=>x.id===id)?.initial_capital||'':'';
-  ishare.value=id?investors.find(x=>x.id===id)?.share_percent||'':'';
+  let inv = id ? investors.find(x=>x.id===id) : null;
+  iname.value = inv ? inv.name : '';
+  iemail.value = inv ? inv.email : '';
+  ishare.value = inv ? inv.share_percent : '';
+  
+  let currentCap = inv ? Number(inv.initial_capital || 0) : 0;
+  capitalInfoLabel.textContent = id ? `Total Modal Saat Ini: ${money(currentCap)}` : 'Atur Modal Awal';
+  capitalAction.value = 'set';
+  icapital.value = id ? '' : '';
+
   ipassword.value='';
   ipassword.type='text';
   setTimeout(()=>ipassword.type='password', 50);
@@ -322,16 +344,34 @@ function openInvestor(id=''){
 }
 
 async function saveInvestor(){
+  let id = iid.value;
+  let action = capitalAction.value;
+  let inputAmount = Number(icapital.value) || 0;
+  
+  let finalCapital = inputAmount;
+  if(id){
+    let existing = investors.find(x=>x.id === id);
+    let oldCap = existing ? Number(existing.initial_capital || 0) : 0;
+    if(action === 'add'){
+      finalCapital = oldCap + inputAmount;
+    } else if(action === 'sub'){
+      finalCapital = Math.max(0, oldCap - inputAmount);
+    } else {
+      finalCapital = inputAmount; // set langsung
+    }
+  }
+
   let data = {
     name: iname.value.trim(),
     email: iemail.value.trim(),
-    initial_capital: Number(icapital.value),
+    initial_capital: finalCapital,
     share_percent: Number(ishare.value)
   };
-  let isNew = !iid.value;
-  let r = isNew?await sb.from('investors').insert(data).select().single():await sb.from('investors').update(data).eq('id', iid.value).select().single();
+
+  let isNew = !id;
+  let r = isNew?await sb.from('investors').insert(data).select().single():await sb.from('investors').update(data).eq('id', id).select().single();
   if(r.error){alert('Gagal menyimpan investor: ' + r.error.message);return;}
-  let investorId = isNew ? r.data.id : iid.value;
+  let investorId = isNew ? r.data.id : id;
   const password = ipassword.value.trim();
   if(password){
     if(password.length < 8){alert('Password minimal 8 karakter');return;}
