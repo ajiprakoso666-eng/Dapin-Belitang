@@ -175,7 +175,7 @@ function render(){
   let cs=customers.filter(c=>c.investor_id===i.id);
   let activePrincipal = cs.filter(c => !isCustomerLunas(c)).reduce((a,c)=>a+Number(c.principal),0);
   let totalCapital = Number(i.initial_capital || 0);
-  let availableCapital = Math.max(0, totalCapital - activePrincipal);
+  let availableCapital = Math.max(0, totalCapital - activePrincipal); // Modal Sisa (Standby)
 
   let estProfitInvestor = 0;
   let settledProfitInvestor = 0;
@@ -194,6 +194,7 @@ function render(){
 
   let totalWithdrawn = withdrawals.filter(w=>w.investor_id===i.id).reduce((sum,w)=>sum+Number(w.amount),0);
   let remainingClaim = Math.max(0, ipSettled - totalWithdrawn);
+  let maxWithdraw = remainingClaim + availableCapital; // Batas maksimal: Saldo Laba Lunas + Modal Sisa
   
   return `<tr>
     <td><b>${esc(i.name)}</b></td>
@@ -205,7 +206,7 @@ function render(){
     <td><span style="color:#dc2626">${money(totalWithdrawn)}</span></td>
     <td><span style="color:#16a34a;font-weight:700">${money(remainingClaim)}</span></td>
     <td>${profile.role==='admin'?`
-      <button class="btn success" onclick="withdrawInvestor('${i.id}', ${remainingClaim},${totalCapital})" style="margin-right:3px;padding:6px 10px;font-size:12px">Withdraw</button>
+      <button class="btn success" onclick="withdrawInvestor('${i.id}',${remainingClaim}, ${availableCapital},${totalCapital})" style="margin-right:3px;padding:6px 10px;font-size:12px">Withdraw</button>
       <button class="btn gray" onclick="openInvestor('${i.id}')" style="margin-right:3px;padding:6px 10px;font-size:12px">Edit</button>
       <button class="btn danger" onclick="deleteInvestor('${i.id}')" style="padding:6px 10px;font-size:12px">Hapus</button>`:''}</td>
   </tr>`
@@ -304,40 +305,40 @@ async function addPayment(id){
   refresh();
 }
 
-async function withdrawInvestor(investorId, maxAmount, currentCapital){
+async function withdrawInvestor(investorId, maxProfitClaim, availableCapital, currentTotalCapital){
   let inv = investors.find(i => i.id === investorId);
   if(!inv) return;
-  let input = prompt(`Masukkan nominal penarikan (Withdraw) untuk ${inv.name}:\nSaldo Laba Lunas Bisa Ditarik: ${money(maxAmount)}`, maxAmount);
+  let maxWithdraw = maxProfitClaim + availableCapital; // Batas maksimal: Laba lunas + Modal Sisa
+  
+  let input = prompt(`Masukkan nominal penarikan (Withdraw) untuk ${inv.name}:\nMaksimal bisa ditarik (Laba Lunas + Modal Sisa): ${money(maxWithdraw)}`, maxWithdraw);
   if(!input) return;
   let amount = Number(input);
   if(isNaN(amount) || amount <= 0){
     alert('Nominal tidak valid.');
     return;
   }
-
-  // Cek apakah withdraw melebihi sisa saldo laba lunas
-  let excess = amount - maxAmount;
-  if(excess > 0){
-    let confirmReduce = confirm(`⚠️ Nominal withdraw melebihi saldo laba lunas sebesar ${money(excess)}.\n\nApakah Anda ingin mengambil kelebihan tersebut langsung dari mengurangi Modal Investor (${money(currentCap)})?`);
-    if(!confirmReduce) return;
+  if(amount > maxWithdraw){
+    alert(`Nominal penarikan melebihi batas maksimal (${money(maxWithdraw)}).`);
+    return;
   }
 
-  // Catat riwayat withdraw sebesar nominal yang diminta
+  // Catat riwayat withdraw
   let {error: wError} = await sb.from('investor_withdrawals').insert({investor_id: investorId, amount: amount});
   if(wError){
     alert('Gagal melakukan withdraw: ' + wError.message);
     return;
   }
 
-  // Jika ada kelebihan dari laba, kurangi modal investor secara otomatis
+  // Jika nominal withdraw melebihi laba lunas, kelebihannya otomatis memotong Modal Sisa / Total Modal
+  let excess = amount - maxProfitClaim;
   if(excess > 0){
-    let newCapital = Math.max(0, currentCapital - excess);
-    let {error: cError} = await sb.from('investors').update({initial_capital: newCapital}).eq('id', investorId);
+    let newTotalCapital = Math.max(0, currentTotalCapital - excess);
+    let {error: cError} = await sb.from('investors').update({initial_capital: newTotalCapital}).eq('id', investorId);
     if(cError){
       alert('Withdraw tercatat, tetapi gagal memperbarui modal investor: ' + cError.message);
       return;
     }
-    alert(`✅ Berhasil melakukan withdraw sebesar ${money(amount)}.\nKelebihan ${money(excess)} telah otomatis memotong Modal Investor (${money(currentCapital)} ➔ ${money(newCapital)}).`);
+    alert(`✅ Berhasil melakukan withdraw sebesar ${money(amount)}.\nKelebihan ${money(excess)} telah otomatis memotong Total Modal Investor (${money(currentTotalCapital)} ➔ ${money(newTotalCapital)}).`);
   } else {
     alert(`✅ Berhasil melakukan withdraw sebesar ${money(amount)} untuk ${inv.name}.`);
   }
