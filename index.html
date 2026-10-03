@@ -25,7 +25,7 @@
     <div class="field"><label>Nama Investor</label><input id="iname"></div>
     <div class="field"><label>Email</label><input id="iemail" type="email"></div>
     <div class="field"><label>Bagi Hasil (%)</label><input id="ishare" type="number"></div>
-    <div class="field"><label>Password Login</label><input id="ipassword" type="password" placeholder="Minimal 8 karakter (kosongkan jika tidak diubah)"></div>
+    <div class="field"><label>Password Login</label><input id="ipassword" type="password" autocomplete="new-password" placeholder="Minimal 8 karakter (kosongkan jika tidak diubah)"></div>
     <div class="toolbar" style="justify-content:flex-end;margin-top:10px">
       <button class="btn gray" onclick="closeModal('investorModal')">Batal</button>
       <button class="btn primary" onclick="saveInvestor()">Simpan</button>
@@ -72,13 +72,15 @@ function openInvestor(id=''){
   iemail.value=id?investors.find(x=>x.id===id)?.email||'':'';
   ishare.value=id?investors.find(x=>x.id===id)?.share_percent||'':'';
   
-  // Kosongkan dan reset paksa kolom password agar tidak terkena autofill browser
+  // Mencegah autofill password browser saat tombol Edit diklik
   ipassword.value='';
   ipassword.type='text';
-  setTimeout(()=>ipassword.type='password', 100);
+  setTimeout(()=>ipassword.type='password', 50);
   
   investorModal.style.display='block';
 }
+async function saveInvestor(){
+  let data = {
     name: iname.value.trim(),
     email: iemail.value.trim(),
     share_percent: Number(ishare.value)
