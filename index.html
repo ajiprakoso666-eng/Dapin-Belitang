@@ -53,38 +53,51 @@ async function saveCustomer(){let id=cid.value,data={investor_id:cinv.value,name
 async function addPayment(id){let amount=prompt('Nominal pembayaran:');if(!amount)return;let r=await sb.from('payments').insert({customer_id:id,amount:Number(amount),payment_date:new Date().toISOString().slice(0,10)});if(r.error)alert(r.error.message);else refresh()}
 function openInvestor(id=''){iid.value=id;iname.value=id?investors.find(x=>x.id===id)?.name:'';ishare.value=id?investors.find(x=>x.id===id)?.share_percent:50;ipassword.value='';investorModal.style.display='block'}
 async function saveInvestor(){
-  let data={
-    name:iname.value.trim(),
-    share_percent:Number(ishare.value)
+  let data = {
+    name: iname.value.trim(),
+    share_percent: Number(ishare.value)
   };
 
-  let r=iid.value
-    ? await sb.from('investors').update(data).eq('id',iid.value)
-    : await sb.from('investors').insert(data);
+  let isNew = !iid.value;
+  
+  // 1. Simpan atau Update data investor ke tabel 'investors'
+  let r = isNew
+    ? await sb.from('investors').insert(data).select().single()
+    : await sb.from('investors').update(data).eq('id', iid.value).select().single();
 
   if(r.error){
-    alert(r.error.message);
+    alert('Gagal menyimpan investor: ' + r.error.message);
     return;
   }
 
-  const password=ipassword.value.trim();
+  // 2. Ambil ID investor (baik ID baru yang baru di-generate maupun ID yang sedang diedit)
+  let investorId = isNew ? r.data.id : iid.value;
 
+  const password = ipassword.value.trim();
+
+  // 3. Jika kolom password diisi, kirim ke Edge Function
   if(password){
-    if(password.length<8){
+    if(password.length < 8){
       alert('Password minimal 8 karakter');
       return;
     }
 
-    const {error:fnError}=await sb.functions.invoke(
+    // Memanggil Edge Function dengan membawa investor_id dan password
+    const { error: fnError } = await sb.functions.invoke(
       'set-investor-password',
-      {body:{password}}
+      { body: { investor_id: investorId, password: password } }
     );
 
     if(fnError){
-      alert('Gagal mengatur password: '+fnError.message);
+      alert('Gagal mengatur password: ' + fnError.message);
       return;
     }
   }
+
+  // Tutup modal dan refresh data
+  closeModal('investorModal');
+  refresh();
+}
 
   closeModal('investorModal');
   refresh();
