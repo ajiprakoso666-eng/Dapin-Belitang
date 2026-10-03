@@ -52,8 +52,8 @@
     <div class="field"><label>Email</label><input id="iemail" type="email"></div>
     <div class="field"><label>Bagi Hasil (%)</label><input id="ishare" type="number"></div>
     
-    <!-- Bagian Penyesuaian Modal (+ / -) -->
-    <div class="field full" style="background:#f8fafc;padding:12px;border-radius:10px;border:1px solid #e2e8f0;">
+    <!-- Bagian Pengaturan Modal (Hanya muncul saat Edit Investor) -->
+    <div id="editCapitalSection" class="field full hidden" style="background:#f8fafc;padding:12px;border-radius:10px;border:1px solid #e2e8f0;">
       <label id="capitalInfoLabel" style="color:#2563eb;margin-bottom:8px">Total Modal Saat Ini: Rp0</label>
       <div style="display:flex;gap:10px;align-items:center">
         <div style="flex:1">
@@ -66,9 +66,15 @@
         </div>
         <div style="flex:1">
           <label>Nominal (Rp)</label>
-          <input id="icapital" type="number" placeholder="0">
+          <input id="icapitalEdit" type="number" placeholder="0">
         </div>
       </div>
+    </div>
+
+    <!-- Bagian Modal Awal (Hanya muncul saat Tambah Investor Baru) -->
+    <div id="newCapitalSection" class="field">
+      <label>Total Modal Awal (Rp)</label>
+      <input id="icapitalNew" type="number" placeholder="Contoh: 10000000">
     </div>
 
     <div class="field"><label>Password Login</label><input id="ipassword" type="password" autocomplete="new-password" placeholder="Minimal 8 karakter (kosongkan jika tidak diubah)"></div>
@@ -333,9 +339,20 @@ function openInvestor(id=''){
   ishare.value = inv ? inv.share_percent : '';
   
   let currentCap = inv ? Number(inv.initial_capital || 0) : 0;
-  capitalInfoLabel.textContent = id ? `Total Modal Saat Ini: ${money(currentCap)}` : 'Atur Modal Awal';
-  capitalAction.value = 'set';
-  icapital.value = id ? '' : '';
+  
+  if(id){
+    // Mode Edit: Tampilkan kotak tambah/kurangi modal, sembunyikan input modal awal biasa
+    document.getElementById('editCapitalSection').classList.remove('hidden');
+    document.getElementById('newCapitalSection').classList.add('hidden');
+    capitalInfoLabel.textContent = `Total Modal Saat Ini: ${money(currentCap)}`;
+    capitalAction.value = 'set';
+    icapitalEdit.value = '';
+  } else {
+    // Mode Tambah Baru: Tampilkan input modal awal biasa, sembunyikan kotak tambah/kurangi
+    document.getElementById('editCapitalSection').classList.add('hidden');
+    document.getElementById('newCapitalSection').classList.remove('hidden');
+    icapitalNew.value = '';
+  }
 
   ipassword.value='';
   ipassword.type='text';
@@ -345,20 +362,25 @@ function openInvestor(id=''){
 
 async function saveInvestor(){
   let id = iid.value;
-  let action = capitalAction.value;
-  let inputAmount = Number(icapital.value) || 0;
-  
-  let finalCapital = inputAmount;
+  let finalCapital = 0;
+
   if(id){
+    // Logika khusus Edit Investor (+ / - / set)
     let existing = investors.find(x=>x.id === id);
     let oldCap = existing ? Number(existing.initial_capital || 0) : 0;
+    let action = capitalAction.value;
+    let inputAmount = Number(icapitalEdit.value) || 0;
+
     if(action === 'add'){
       finalCapital = oldCap + inputAmount;
     } else if(action === 'sub'){
       finalCapital = Math.max(0, oldCap - inputAmount);
     } else {
-      finalCapital = inputAmount; // set langsung
+      finalCapital = inputAmount;
     }
+  } else {
+    // Logika Tambah Investor Baru
+    finalCapital = Number(icapitalNew.value) || 0;
   }
 
   let data = {
