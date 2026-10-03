@@ -21,7 +21,7 @@
 <div id="adminBar" class="toolbar hidden"><button class="btn primary" onclick="openCustomer()">＋ Nasabah</button><button class="btn primary" onclick="openInvestor()">＋ Investor</button><button class="btn gray" onclick="refresh()">↻ Refresh</button><button class="btn danger" onclick="logout()">Keluar</button></div>
 <div id="investorBar" class="toolbar hidden"><span id="investorName" class="btn gray"></span><button class="btn gray" onclick="refresh()">↻ Refresh</button><button class="btn danger" onclick="logout()">Keluar</button></div>
 <div class="panel"><div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap"><h2>Daftar Nasabah</h2><input id="search" class="search" placeholder="Cari nasabah..." oninput="render()"></div><div class="table-wrap"><table><thead><tr><th>Nasabah</th><th>Investor</th><th>Mulai</th><th>Pokok</th><th>Hari</th><th>Denda</th><th>Dibayar</th><th>Sisa</th><th>Tgl Lunas</th><th>Status</th><th id="actHead">Aksi</th></tr></thead><tbody id="rows"></tbody></table></div></div>
-<div class="panel"><h2>Ringkasan Bagi Hasil & Modal Investor</h2><div class="table-wrap"><table><thead><tr><th>Investor</th><th>Total Modal</th><th>Modal Terpakai (Aktif)</th><th>Modal Sisa (Standby)</th><th>Laba Terealisasi</th><th>Bagi Hasil Investor</th><th>Bagian Dapin</th><th>Aksi</th></tr></thead><tbody id="investorRows"></tbody></table></div></div>
+<div class="panel"><h2>Ringkasan Bagi Hasil & Modal Investor</h2><div class="table-wrap"><table><thead><tr><th>Investor</th><th>Total Modal</th><th>Modal Terpakai (Aktif)</th><th>Modal Sisa (Standby)</th><th>Est. Total Laba</th><th>Bagi Hasil Investor</th><th>Bagian Dapin</th><th>Aksi</th></tr></thead><tbody id="investorRows"></tbody></table></div></div>
 </div>
 
 <div id="customerModal" class="modal">
@@ -106,11 +106,12 @@ function render(){
  paid.textContent=money(list.reduce((a,c)=>a+paidFor(c.id),0));
  outstanding.textContent=money(list.reduce((a,c)=>a+calc(c).sisa,0));
 
- // Hitung Total Laba Terealisasi dari seluruh nasabah
+ // Hitung Estimasi Total Laba dari SELURUH nasabah (termasuk belum lunas berdasarkan denda berjalan)
  let totalProfitAll = 0;
  customers.forEach(c => {
   let x = calc(c);
-  totalProfitAll += Math.max(0, x.paid - Number(c.principal));
+  let estProfit = x.total - Number(c.principal); // Total tagihan (pokok + denda berjalan) dikurangi pokok
+  totalProfitAll += Math.max(0, estProfit);
  });
  totalProfitCard.textContent = money(totalProfitAll);
  
@@ -143,18 +144,24 @@ function render(){
   let totalCapital = Number(i.initial_capital || 0);
   let availableCapital = Math.max(0, totalCapital - activePrincipal);
 
-  let profit=0;
-  cs.forEach(c=>{let x=calc(c);profit+=Math.max(0,x.paid-Number(c.principal))});
-  let ip=profit*Number(i.share_percent)/100;
+  // Hitung Estimasi Laba untuk masing-masing investor (mencakup semua nasabah milik investor ini, baik lunas maupun belum lunas)
+  let estProfitInvestor = 0;
+  cs.forEach(c => {
+    let x = calc(c);
+    let est = x.total - Number(c.principal);
+    estProfitInvestor += Math.max(0, est);
+  });
+
+  let ip = estProfitInvestor * Number(i.share_percent) / 100;
   
   return `<tr>
     <td><b>${esc(i.name)}</b></td>
     <td>${money(totalCapital)}</td>
     <td><span style="color:#d97706;font-weight:700">${money(activePrincipal)}</span></td>
     <td><span style="color:#16a34a;font-weight:700">${money(availableCapital)}</span></td>
-    <td>${money(profit)}</td>
+    <td><b>${money(estProfitInvestor)}</b></td>
     <td>${money(ip)} (${i.share_percent}%)</td>
-    <td>${money(profit-ip)}</td>
+    <td>${money(estProfitInvestor - ip)}</td>
     <td>${profile.role==='admin'?`<button class="btn gray" onclick="openInvestor('${i.id}')" style="margin-right:5px">Edit</button><button class="btn danger" onclick="deleteInvestor('${i.id}')">Hapus</button>`:''}</td>
   </tr>`
  }).join('');
