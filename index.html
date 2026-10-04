@@ -250,7 +250,8 @@ function render(){
     let est = Math.max(0, x.total - Number(c.principal));
     estProfitInvestor += est;
     if(isCustomerLunas(c)){
-      settledProfitInvestor += est;
+      let realCProfit = Math.max(0, (c.settled_date ? (paidFor(c.id) - Number(c.principal)) : est));
+      settledProfitInvestor += realCProfit;
     }
   });
 
@@ -263,7 +264,7 @@ function render(){
   return `<tr>
     <td><b>${esc(i.name)}</b></td>
     <td>${money(totalCapital)}</td>
-    <td><span style="color:#d97706;font-weight:700">${money(activePrincipal)}</span></td>
+    <td><span style="color:#d97706;font-weight:700">{money(activePrincipal)}</span></td>
     <td><span style="color:#16a34a;font-weight:700">${money(availableCapital)}</span></td>
     <td><b>${money(ipTotal)}</b></td>
     <td><span style="color:#2563eb;font-weight:700">${money(ipSettled)}</span> (${i.share_percent}%)</td>
@@ -355,17 +356,18 @@ async function saveCustomer(){
 }
 
 async function addPayment(id){
-  let amount=prompt('Nominal pembayaran:');
+  let c = customers.find(x=>x.id===id);
+  let x = calc(c);
+  let amount=prompt('Nominal pembayaran:', x.sisa);
   if(!amount)return;
   let today = new Date().toISOString().slice(0,10);
   let r=await sb.from('payments').insert({customer_id:id,amount:Number(amount),payment_date:today});
   if(r.error){alert(r.error.message);return;}
 
-  let c = customers.find(x=>x.id===id);
   payments.push({customer_id: id, amount: Number(amount), payment_date: today});
-  let x = calc(c);
+  let updatedX = calc(c);
   
-  if(x.sisa === 0 && !c.settled_date){
+  if(updatedX.sisa === 0 && !c.settled_date){
     await sb.from('customers').update({settled_date: today}).eq('id', id);
   }
 
