@@ -163,14 +163,21 @@ async function load(){
 }
 function render(){
  const q=(search.value||'').toLowerCase();
- let list=customers.filter(c=>(c.name+' '+(c.phone||'')).toLowerCase().includes(q));
+ 
+ // Jika role investor, pastikan hanya mengambil data nasabah miliknya sendiri
+ let list = customers;
+ if(profile.role !== 'admin' && profile.investor_id){
+   list = list.filter(c => c.investor_id === profile.investor_id);
+ }
+ 
+ list = list.filter(c=>(c.name+' '+(c.phone||'')).toLowerCase().includes(q));
  count.textContent=list.length;
  principal.textContent=money(list.reduce((a,c)=>a+Number(c.principal),0));
  paid.textContent=money(list.reduce((a,c)=>a+paidFor(c.id),0));
 
  let realProfit = 0;
  let pendingProfit = 0;
- customers.forEach(c => {
+ list.forEach(c => {
   let x = calc(c);
   let estProfit = Math.max(0, x.total - Number(c.principal));
   if(isCustomerLunas(c)){
@@ -559,7 +566,15 @@ async function saveInvestor(){
 
   let isNew = !id;
   let r = isNew?await sb.from('investors').insert(data).select().single():await sb.from('investors').update(data).eq('id', id).select().single();
-  if(r.error){alert('Gagal menyimpan investor: ' + r.error.message);return;}
+  if(r.error){
+    if(r.error.code === '23505' || r.error.message.includes('unique constraint') || r.error.message.includes('duplicate key')){
+      alert('❌ Gagal menyimpan investor: Nama investor "' + data.name + '" sudah terdaftar di sistem. Gunakan nama lain.');
+    } else {
+      alert('Gagal menyimpan investor: ' + r.error.message);
+    }
+    return;
+  }
+
   let investorId = isNew ? r.data.id : id;
   const password = ipassword.value.trim();
   if(password){
