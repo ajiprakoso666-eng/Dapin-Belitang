@@ -21,7 +21,7 @@
 <div id="adminBar" class="toolbar hidden"><button class="btn primary" onclick="openCustomer()">＋ Nasabah</button><button class="btn primary" onclick="openInvestor()">＋ Investor</button><button class="btn gray" onclick="refresh()">↻ Refresh</button><button class="btn danger" onclick="logout()">Keluar</button></div>
 <div id="investorBar" class="toolbar hidden"><span id="investorName" class="btn gray"></span><button class="btn gray" onclick="refresh()">↻ Refresh</button><button class="btn danger" onclick="logout()">Keluar</button></div>
 <div class="panel"><div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap"><h2>Daftar Nasabah (Dikelompokkan per Nama)</h2><input id="search" class="search" placeholder="Cari nasabah..." oninput="render()"></div><div class="table-wrap"><table><thead><tr><th>Nasabah</th><th>Investor</th><th>Mulai</th><th>Pokok</th><th>Hari</th><th>Denda</th><th>Dibayar</th><th>Sisa</th><th>Tgl Lunas</th><th>Status</th><th id="actHead">Aksi</th></tr></thead><tbody id="rows"></tbody></table></div></div>
-<div class="panel"><h2>Ringkasan Bagi Hasil & Modal Investor</h2><div class="table-wrap"><table><thead><tr><th>Investor</th><th>Total Modal</th><th>Modal Aktif</th><th>Modal Sisa</th><th>Total Laba (Lunas + Est)</th><th>Hak Investor (Bersih)</th><th>Sudah Di-Withdraw (Lunas)</th><th>Saldo Laba Lunas Bisa Ditarik</th><th>Aksi</th></tr></thead><tbody id="investorRows"></tbody></table></div></div>
+<div class="panel"><h2>Ringkasan Bagi Hasil & Modal Investor</h2><div class="table-wrap"><table><thead><tr><th>Investor</th><th>Total Modal</th><th>Modal Aktif</th><th>Modal Sisa</th><th>Total Laba Investor</th><th>Hak Bersih Dapin</th><th>Sudah Di-Withdraw (Lunas)</th><th>Saldo Laba Lunas Bisa Ditarik</th><th>Aksi</th></tr></thead><tbody id="investorRows"></tbody></table></div></div>
 </div>
 
 <div id="customerModal" class="modal">
@@ -242,32 +242,33 @@ function render(){
   let totalCapital = Number(i.initial_capital || 0);
   let availableCapital = Math.max(0, totalCapital - activePrincipal);
 
-  let estProfitInvestor = 0;
   let settledProfitInvestor = 0;
+  let settledProfitDapinNet = 0;
 
   cs.forEach(c => {
     let x = calc(c);
     let est = Math.max(0, x.total - Number(c.principal));
-    estProfitInvestor += est;
     if(isCustomerLunas(c)){
-      let realCProfit = Math.max(0, x.total - Number(c.principal));
-      settledProfitInvestor += realCProfit;
+      let realCProfit = est;
+      let sharePct = Number(i.share_percent) / 100;
+      let investorPart = realCProfit * sharePct;
+      let dapinNetPart = realCProfit * (1 - sharePct);
+      
+      settledProfitInvestor += investorPart;
+      settledProfitDapinNet += dapinNetPart;
     }
   });
 
-  let ipTotal = estProfitInvestor * Number(i.share_percent) / 100;
-  let ipSettled = settledProfitInvestor * Number(i.share_percent) / 100;
-
   let totalWithdrawn = withdrawals.filter(w=>w.investor_id===i.id).reduce((sum,w)=>sum+Number(w.amount),0);
-  let remainingClaim = Math.max(0, ipSettled - totalWithdrawn);
+  let remainingClaim = Math.max(0, settledProfitInvestor - totalWithdrawn);
   
   return `<tr>
     <td><b>${esc(i.name)}</b></td>
     <td>${money(totalCapital)}</td>
     <td><span style="color:#d97706;font-weight:700">${money(activePrincipal)}</span></td>
     <td><span style="color:#16a34a;font-weight:700">${money(availableCapital)}</span></td>
-    <td><b>${money(ipTotal)}</b></td>
-    <td><span style="color:#2563eb;font-weight:700">${money(ipSettled)}</span> (${i.share_percent}%)</td>
+    <td><b>${money(settledProfitInvestor)}</b></td>
+    <td><span style="color:#2563eb;font-weight:700">${money(settledProfitDapinNet)}</span> (${100 - Number(i.share_percent)}% / sisa)</td>
     <td><span style="color:#dc2626">${money(totalWithdrawn)}</span></td>
     <td><span style="color:#16a34a;font-weight:700">${money(remainingClaim)}</span></td>
     <td>${profile.role==='admin'?`
