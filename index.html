@@ -250,7 +250,7 @@ function render(){
     let est = Math.max(0, x.total - Number(c.principal));
     estProfitInvestor += est;
     if(isCustomerLunas(c)){
-      let realCProfit = Math.max(0, (c.settled_date ? (paidFor(c.id) - Number(c.principal)) : est));
+      let realCProfit = Math.max(0, x.total - Number(c.principal));
       settledProfitInvestor += realCProfit;
     }
   });
@@ -264,7 +264,7 @@ function render(){
   return `<tr>
     <td><b>${esc(i.name)}</b></td>
     <td>${money(totalCapital)}</td>
-    <td><span style="color:#d97706;font-weight:700">{money(activePrincipal)}</span></td>
+    <td><span style="color:#d97706;font-weight:700">${money(activePrincipal)}</span></td>
     <td><span style="color:#16a34a;font-weight:700">${money(availableCapital)}</span></td>
     <td><b>${money(ipTotal)}</b></td>
     <td><span style="color:#2563eb;font-weight:700">${money(ipSettled)}</span> (${i.share_percent}%)</td>
