@@ -21,7 +21,7 @@
 <div id="adminBar" class="toolbar hidden"><button class="btn primary" onclick="openCustomer()">＋ Nasabah</button><button class="btn primary" onclick="openInvestor()">＋ Investor</button><button class="btn gray" onclick="refresh()">↻ Refresh</button><button class="btn danger" onclick="logout()">Keluar</button></div>
 <div id="investorBar" class="toolbar hidden"><span id="investorName" class="btn gray"></span><button class="btn gray" onclick="refresh()">↻ Refresh</button><button class="btn danger" onclick="logout()">Keluar</button></div>
 <div class="panel"><div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap"><h2>Daftar Nasabah (Dikelompokkan per Nama)</h2><input id="search" class="search" placeholder="Cari nasabah..." oninput="render()"></div><div class="table-wrap"><table><thead><tr><th>Nasabah</th><th>Investor</th><th>Mulai</th><th>Pokok</th><th>Hari</th><th>Denda</th><th>Dibayar</th><th>Sisa</th><th>Tgl Lunas</th><th>Status</th><th id="actHead">Aksi</th></tr></thead><tbody id="rows"></tbody></table></div></div>
-<div class="panel"><h2>Ringkasan Bagi Hasil & Modal Investor</h2><div class="table-wrap"><table><thead><tr><th>Investor</th><th>Total Modal</th><th>Modal Aktif</th><th>Modal Sisa</th><th>Total Laba Investor</th><th>Hak Bersih Dapin</th><th>Sudah Di-Withdraw (Lunas)</th><th>Saldo Laba Lunas Bisa Ditarik</th><th>Aksi</th></tr></thead><tbody id="investorRows"></tbody></table></div></div>
+<div class="panel"><h2>Ringkasan Bagi Hasil & Modal Investor</h2><div class="table-wrap"><table><thead><tr><th>Investor</th><th>Total Modal</th><th>Modal Aktif</th><th>Modal Sisa</th><th>Total Laba Investor</th><th>Hak Bersih Dapin</th><th>Aksi</th></tr></thead><tbody id="investorRows"></tbody></table></div></div>
 </div>
 
 <div id="customerModal" class="modal">
@@ -259,8 +259,7 @@ function render(){
     }
   });
 
-  let totalWithdrawn = withdrawals.filter(w=>w.investor_id===i.id).reduce((sum,w)=>sum+Number(w.amount),0);
-  let remainingClaim = Math.max(0, settledProfitInvestor - totalWithdrawn);
+  let maxWithdraw = availableCapital + settledProfitInvestor;
   
   return `<tr>
     <td><b>${esc(i.name)}</b></td>
@@ -269,10 +268,9 @@ function render(){
     <td><span style="color:#16a34a;font-weight:700">${money(availableCapital)}</span></td>
     <td><b>${money(settledProfitInvestor)}</b></td>
     <td><span style="color:#2563eb;font-weight:700">${money(settledProfitDapinNet)}</span> (${100 - Number(i.share_percent)}% / sisa)</td>
-    <td><span style="color:#dc2626">${money(totalWithdrawn)}</span></td>
-    <td><span style="color:#16a34a;font-weight:700">${money(remainingClaim)}</span></td>
     <td>${profile.role==='admin'?`
-      <button class="btn success" onclick="withdrawInvestor('${i.id}',${remainingClaim}, ${availableCapital},${totalCapital})" style="margin-right:3px;padding:6px 10px;font-size:12px">Withdraw</button>
+      <button class="btn success" onclick="withdrawInvestor('${i.id}', ${maxWithdraw},${availableCapital}, ${totalCapital},${settledProfitInvestor})" style="margin-right:3px;padding:6px 10px;font-size:12px">Withdraw</button>
+      <button class="btn primary" onclick="showHistory('${i.id}', '${esc(i.name)}')" style="margin-right:3px;padding:6px 10px;font-size:12px">Riwayat WD</button>
       <button class="btn gray" onclick="openInvestor('${i.id}')" style="margin-right:3px;padding:6px 10px;font-size:12px">Edit</button>
       <button class="btn danger" onclick="deleteInvestor('${i.id}')" style="padding:6px 10px;font-size:12px">Hapus</button>`:''}</td>
   </tr>`
@@ -375,12 +373,11 @@ async function addPayment(id){
   refresh();
 }
 
-async function withdrawInvestor(investorId, maxProfitClaim, availableCapital, currentTotalCapital){
+async function withdrawInvestor(investorId, maxWithdraw, availableCapital, currentTotalCapital, totalProfitInvestor){
   let inv = investors.find(i => i.id === investorId);
   if(!inv) return;
-  let maxWithdraw = maxProfitClaim + availableCapital;
   
-  let input = prompt(`Masukkan nominal penarikan (Withdraw) untuk ${inv.name}:\nMaksimal bisa ditarik (Laba Lunas + Modal Sisa): ${money(maxWithdraw)}`, maxWithdraw);
+  let input = prompt(`Masukkan nominal penarikan (Withdraw) untuk ${inv.name}:\nMaksimal WD (Modal Sisa + Total Laba Investor): ${money(maxWithdraw)}`, maxWithdraw);
   if(!input) return;
   let amount = Number(input);
   if(isNaN(amount) || amount <= 0){
@@ -398,7 +395,7 @@ async function withdrawInvestor(investorId, maxProfitClaim, availableCapital, cu
     return;
   }
 
-  let excess = amount - maxProfitClaim;
+  let excess = amount - totalProfitInvestor;
   if(excess > 0){
     let newTotalCapital = Math.max(0, currentTotalCapital - excess);
     let {error: cError} = await sb.from('investors').update({initial_capital: newTotalCapital}).eq('id', investorId);
@@ -406,12 +403,29 @@ async function withdrawInvestor(investorId, maxProfitClaim, availableCapital, cu
       alert('Withdraw tercatat, tetapi gagal memperbarui modal investor: ' + cError.message);
       return;
     }
-    alert(`✅ Berhasil melakukan withdraw sebesar ${money(amount)}.\nKelebihan ${money(excess)} telah otomatis memotong Total Modal Investor (${money(currentTotalCapital)} ➔ ${money(newTotalCapital)}).`);
+    alert(`✅ Berhasil withdraw sebesar ${money(amount)}.\nKelebihan ${money(excess)} otomatis memotong Total Modal Investor (${money(currentTotalCapital)} ➔ ${money(newTotalCapital)}).`);
   } else {
     alert(`✅ Berhasil melakukan withdraw sebesar ${money(amount)} untuk ${inv.name}.`);
   }
 
   refresh();
+}
+
+function showHistory(investorId, investorName){
+  let invWithdraws = withdrawals.filter(w => w.investor_id === investorId);
+  if(invWithdraws.length === 0){
+    alert(`Belum ada riwayat penarikan (Withdraw) untuk investor ${investorName}.`);
+    return;
+  }
+  let msg = `📜 Riwayat Penarikan (Withdraw) - ${investorName}:\n\n`;
+  let totalWd = 0;
+  invWithdraws.forEach((w, idx) => {
+    let tgl = w.created_at ? new Date(w.created_at).toLocaleDateString('id-ID') : '-';
+    msg += `${idx+1}. Tanggal: ${tgl} — Jumlah: ${money(w.amount)}\n`;
+    totalWd += Number(w.amount);
+  });
+  msg += `\n💰 TOTAL SELURUH WD: ${money(totalWd)}`;
+  alert(msg);
 }
 
 function openInvestor(id=''){
