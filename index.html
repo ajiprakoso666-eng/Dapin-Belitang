@@ -83,6 +83,29 @@
   </div>
 </div>
 
+<!-- MODAL RIWAYAT WD -->
+<div id="historyModal" class="modal">
+  <div class="modalbox" style="max-width:700px">
+    <h2 id="historyTitle">Riwayat Withdraw</h2>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>No</th>
+            <th>Tanggal</th>
+            <th>Jumlah WD</th>
+            <th>Aksi</th>
+          </tr>
+        </thead>
+        <tbody id="historyRows"></tbody>
+      </table>
+    </div>
+    <div class="toolbar" style="justify-content:flex-end;margin-top:15px">
+      <button class="btn gray" onclick="closeModal('historyModal')">Tutup</button>
+    </div>
+  </div>
+</div>
+
 <script>
 const SUPABASE_URL='https://chqdgxjdfbsatzoivpwb.supabase.co';
 const SUPABASE_KEY='sb_publishable_vq_6la2B3uYk1c2SdXQYyw_KTe0QJCy';
@@ -260,8 +283,6 @@ function render(){
   });
 
   let totalWithdrawn = withdrawals.filter(w=>w.investor_id===i.id).reduce((sum,w)=>sum+Number(w.amount),0);
-  
-  // Total laba investor dikurangi dengan total penarikan yang pernah dilakukan
   let currentProfitInvestor = Math.max(0, rawSettledProfitInvestor - totalWithdrawn);
   let maxWithdraw = availableCapital + currentProfitInvestor;
   
@@ -399,7 +420,6 @@ async function withdrawInvestor(investorId, maxWithdraw, availableCapital, curre
     return;
   }
 
-  // Masukkan langsung ke state lokal agar perubahan langsung terekam tanpa menunggu refresh ulang
   if(wData) {
     withdrawals.push(wData);
   } else {
@@ -427,19 +447,58 @@ async function withdrawInvestor(investorId, maxWithdraw, availableCapital, curre
 
 function showHistory(investorId, investorName){
   let invWithdraws = withdrawals.filter(w => w.investor_id === investorId);
+  historyTitle.textContent = `Riwayat Withdraw — ${investorName}`;
+  
+  let rows = '';
   if(invWithdraws.length === 0){
-    alert(`Belum ada riwayat penarikan (Withdraw) untuk investor ${investorName}.`);
+    rows = `<tr><td colspan="4" class="muted" style="text-align:center">Belum ada riwayat penarikan.</td></tr>`;
+  } else {
+    invWithdraws.forEach((w, idx) => {
+      let tgl = w.created_at ? new Date(w.created_at).toLocaleDateString('id-ID') : '-';
+      rows += `<tr>
+        <td>${idx + 1}</td>
+        <td>${tgl}</td>
+        <td><b>${money(w.amount)}</b></td>
+        <td>
+          <button class="btn gray" style="padding:4px 8px;font-size:11px" onclick="editWithdraw('${w.id}', ${w.amount})">Edit</button>
+          <button class="btn danger" style="padding:4px 8px;font-size:11px" onclick="deleteWithdraw('${w.id}')">Hapus</button>
+        </td>
+      </tr>`;
+    });
+  }
+  historyRows.innerHTML = rows;
+  document.getElementById('historyModal').style.display = 'block';
+}
+
+async function editWithdraw(id, oldAmount){
+  let input = prompt('Masukkan nominal WD yang baru:', oldAmount);
+  if(!input) return;
+  let newAmount = Number(input);
+  if(isNaN(newAmount) || newAmount <= 0){
+    alert('Nominal tidak valid.');
     return;
   }
-  let msg = `📜 Riwayat Penarikan (Withdraw) - ${investorName}:\n\n`;
-  let totalWd = 0;
-  invWithdraws.forEach((w, idx) => {
-    let tgl = w.created_at ? new Date(w.created_at).toLocaleDateString('id-ID') : '-';
-    msg += `${idx+1}. Tanggal: ${tgl} — Jumlah: ${money(w.amount)}\n`;
-    totalWd += Number(w.amount);
-  });
-  msg += `\n💰 TOTAL SELURUH WD: ${money(totalWd)}`;
-  alert(msg);
+
+  let { error } = await sb.from('investor_withdrawals').update({ amount: newAmount }).eq('id', id);
+  if(error){
+    alert('Gagal mengedit riwayat WD: ' + error.message);
+    return;
+  }
+  alert('✅ Riwayat WD berhasil diperbarui.');
+  closeModal('historyModal');
+  refresh();
+}
+
+async function deleteWithdraw(id){
+  if(!confirm('Apakah Anda yakin ingin menghapus riwayat penarikan ini?')) return;
+  let { error } = await sb.from('investor_withdrawals').delete().eq('id', id);
+  if(error){
+    alert('Gagal menghapus riwayat WD: ' + error.message);
+    return;
+  }
+  alert('✅ Riwayat WD berhasil dihapus.');
+  closeModal('historyModal');
+  refresh();
 }
 
 function openInvestor(id=''){
