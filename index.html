@@ -242,7 +242,7 @@ function render(){
   let totalCapital = Number(i.initial_capital || 0);
   let availableCapital = Math.max(0, totalCapital - activePrincipal);
 
-  let settledProfitInvestor = 0;
+  let rawSettledProfitInvestor = 0;
   let settledProfitDapinNet = 0;
 
   cs.forEach(c => {
@@ -254,22 +254,26 @@ function render(){
       let investorPart = realCProfit * sharePct;
       let dapinNetPart = realCProfit * (1 - sharePct);
       
-      settledProfitInvestor += investorPart;
+      rawSettledProfitInvestor += investorPart;
       settledProfitDapinNet += dapinNetPart;
     }
   });
 
-  let maxWithdraw = availableCapital + settledProfitInvestor;
+  let totalWithdrawn = withdrawals.filter(w=>w.investor_id===i.id).reduce((sum,w)=>sum+Number(w.amount),0);
+  
+  // Total laba investor dikurangi dengan total penarikan yang pernah dilakukan (minimal 0)
+  let currentProfitInvestor = Math.max(0, rawSettledProfitInvestor - totalWithdrawn);
+  let maxWithdraw = availableCapital + currentProfitInvestor;
   
   return `<tr>
     <td><b>${esc(i.name)}</b></td>
     <td>${money(totalCapital)}</td>
     <td><span style="color:#d97706;font-weight:700">${money(activePrincipal)}</span></td>
     <td><span style="color:#16a34a;font-weight:700">${money(availableCapital)}</span></td>
-    <td><b>${money(settledProfitInvestor)}</b></td>
+    <td><b>${money(currentProfitInvestor)}</b></td>
     <td><span style="color:#2563eb;font-weight:700">${money(settledProfitDapinNet)}</span> (${100 - Number(i.share_percent)}% / sisa)</td>
     <td>${profile.role==='admin'?`
-      <button class="btn success" onclick="withdrawInvestor('${i.id}', ${maxWithdraw},${availableCapital}, ${totalCapital},${settledProfitInvestor})" style="margin-right:3px;padding:6px 10px;font-size:12px">Withdraw</button>
+      <button class="btn success" onclick="withdrawInvestor('${i.id}', ${maxWithdraw},${availableCapital}, ${totalCapital},${currentProfitInvestor})" style="margin-right:3px;padding:6px 10px;font-size:12px">Withdraw</button>
       <button class="btn primary" onclick="showHistory('${i.id}', '${esc(i.name)}')" style="margin-right:3px;padding:6px 10px;font-size:12px">Riwayat WD</button>
       <button class="btn gray" onclick="openInvestor('${i.id}')" style="margin-right:3px;padding:6px 10px;font-size:12px">Edit</button>
       <button class="btn danger" onclick="deleteInvestor('${i.id}')" style="padding:6px 10px;font-size:12px">Hapus</button>`:''}</td>
@@ -373,11 +377,11 @@ async function addPayment(id){
   refresh();
 }
 
-async function withdrawInvestor(investorId, maxWithdraw, availableCapital, currentTotalCapital, totalProfitInvestor){
+async function withdrawInvestor(investorId, maxWithdraw, availableCapital, currentTotalCapital, currentProfitInvestor){
   let inv = investors.find(i => i.id === investorId);
   if(!inv) return;
   
-  let input = prompt(`Masukkan nominal penarikan (Withdraw) untuk ${inv.name}:\nMaksimal WD (Modal Sisa + Total Laba Investor): ${money(maxWithdraw)}`, maxWithdraw);
+  let input = prompt(`Masukkan nominal penarikan (Withdraw) untuk ${inv.name}:\nMaksimal WD (Modal Sisa + Sisa Laba Investor): ${money(maxWithdraw)}`, maxWithdraw);
   if(!input) return;
   let amount = Number(input);
   if(isNaN(amount) || amount <= 0){
@@ -395,7 +399,7 @@ async function withdrawInvestor(investorId, maxWithdraw, availableCapital, curre
     return;
   }
 
-  let excess = amount - totalProfitInvestor;
+  let excess = amount - currentProfitInvestor;
   if(excess > 0){
     let newTotalCapital = Math.max(0, currentTotalCapital - excess);
     let {error: cError} = await sb.from('investors').update({initial_capital: newTotalCapital}).eq('id', investorId);
