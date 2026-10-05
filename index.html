@@ -20,7 +20,21 @@
 </div>
 <div id="adminBar" class="toolbar hidden"><button class="btn primary" onclick="openCustomer()">＋ Nasabah</button><button class="btn primary" onclick="openInvestor()">＋ Investor</button><button class="btn gray" onclick="refresh()">↻ Refresh</button><button class="btn danger" onclick="logout()">Keluar</button></div>
 <div id="investorBar" class="toolbar hidden"><span id="investorName" class="btn gray"></span><button class="btn gray" onclick="refresh()">↻ Refresh</button><button class="btn danger" onclick="logout()">Keluar</button></div>
-<div class="panel"><div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap"><h2>Daftar Pinjaman Nasabah</h2><input id="search" class="search" placeholder="Cari..." oninput="render()"></div><div class="table-wrap"><table><thead><tr><th>Nasabah</th><th>Investor</th><th>Mulai</th><th>Pokok</th><th>Hari</th><th>Denda</th><th>Dibayar</th><th>Sisa</th><th>Tgl Lunas</th><th>Status</th><th id="actHead">Aksi</th></tr></thead><tbody id="rows"></tbody></table></div></div>
+<div class="panel">
+  <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:10px">
+    <h2>Daftar Pinjaman Nasabah</h2>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <select id="sortBy" class="search" style="cursor:pointer" onchange="render()">
+        <option value="default">📁 Urutkan / Filter (Default)</option>
+        <option value="unpaid">⚠️ Belum Lunas Saja</option>
+        <option value="nasabah">👤 Sort by: Nasabah (A-Z)</option>
+        <option value="investor">💼 Sort by: Investor (A-Z)</option>
+      </select>
+      <input id="search" class="search" placeholder="Cari..." oninput="render()">
+    </div>
+  </div>
+  <div class="table-wrap"><table><thead><tr><th>Nasabah</th><th>Investor</th><th>Mulai</th><th>Pokok</th><th>Hari</th><th>Denda</th><th>Dibayar</th><th>Sisa</th><th>Tgl Lunas</th><th>Status</th><th id="actHead">Aksi</th></tr></thead><tbody id="rows"></tbody></table></div>
+</div>
 <div class="panel"><h2>Ringkasan Bagi Hasil & Modal Investor</h2><div class="table-wrap"><table><thead><tr><th>Investor</th><th>Total Modal</th><th>Modal Aktif</th><th>Modal Sisa</th><th>Total Laba Investor</th><th id="dapinHead">Hak Bersih Dapin</th><th>Aksi</th></tr></thead><tbody id="investorRows"></tbody></table></div></div>
 </div>
 
@@ -166,6 +180,7 @@ async function load(){
 }
 function render(){
  const q=(search.value||'').toLowerCase();
+ const sortVal = document.getElementById('sortBy').value;
  
  let list = customers;
  if(profile.role !== 'admin' && profile.investor_id){
@@ -173,6 +188,20 @@ function render(){
  }
  
  list = list.filter(c=>(c.name+' '+(c.phone||'')).toLowerCase().includes(q));
+
+ // Terapkan filter / sort ala Windows Explorer
+ if(sortVal === 'unpaid'){
+   list = list.filter(c => !isCustomerLunas(c));
+ } else if(sortVal === 'nasabah'){
+   list.sort((a, b) => a.name.localeCompare(b.name));
+ } else if(sortVal === 'investor'){
+   list.sort((a, b) => {
+     let invA = investors.find(i => i.id === a.investor_id)?.name || '';
+     let invB = investors.find(i => i.id === b.investor_id)?.name || '';
+     return invA.localeCompare(invB);
+   });
+ }
+
  count.textContent=list.length;
  principal.textContent=money(list.reduce((a,c)=>a+Number(c.principal),0));
  paid.textContent=money(list.reduce((a,c)=>a+paidFor(c.id),0));
