@@ -20,7 +20,7 @@
 </div>
 <div id="adminBar" class="toolbar hidden"><button class="btn primary" onclick="openCustomer()">＋ Nasabah</button><button class="btn primary" onclick="openInvestor()">＋ Investor</button><button class="btn gray" onclick="refresh()">↻ Refresh</button><button class="btn danger" onclick="logout()">Keluar</button></div>
 <div id="investorBar" class="toolbar hidden"><span id="investorName" class="btn gray"></span><button class="btn gray" onclick="refresh()">↻ Refresh</button><button class="btn danger" onclick="logout()">Keluar</button></div>
-<div class="panel"><div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap"><h2>Daftar Nasabah (Dikelompokkan per Nama)</h2><input id="search" class="search" placeholder="Cari nasabah..." oninput="render()"></div><div class="table-wrap"><table><thead><tr><th>Nasabah</th><th>Investor</th><th>Mulai</th><th>Pokok</th><th>Hari</th><th>Denda</th><th>Dibayar</th><th>Sisa</th><th>Tgl Lunas</th><th>Status</th><th id="actHead">Aksi</th></tr></thead><tbody id="rows"></tbody></table></div></div>
+<div class="panel"><div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap"><h2>Daftar Pinjaman Nasabah</h2><input id="search" class="search" placeholder="Cari..." oninput="render()"></div><div class="table-wrap"><table><thead><tr><th>Nasabah</th><th>Investor</th><th>Mulai</th><th>Pokok</th><th>Hari</th><th>Denda</th><th>Dibayar</th><th>Sisa</th><th>Tgl Lunas</th><th>Status</th><th id="actHead">Aksi</th></tr></thead><tbody id="rows"></tbody></table></div></div>
 <div class="panel"><h2>Ringkasan Bagi Hasil & Modal Investor</h2><div class="table-wrap"><table><thead><tr><th>Investor</th><th>Total Modal</th><th>Modal Aktif</th><th>Modal Sisa</th><th>Total Laba Investor</th><th>Hak Bersih Dapin</th><th>Aksi</th></tr></thead><tbody id="investorRows"></tbody></table></div></div>
 </div>
 
@@ -164,7 +164,6 @@ async function load(){
 function render(){
  const q=(search.value||'').toLowerCase();
  
- // Jika role investor, pastikan hanya mengambil data nasabah miliknya sendiri
  let list = customers;
  if(profile.role !== 'admin' && profile.investor_id){
    list = list.filter(c => c.investor_id === profile.investor_id);
@@ -189,63 +188,92 @@ function render(){
  realProfitCard.textContent = money(realProfit);
  pendingProfitCard.textContent = money(pendingProfit);
 
- let grouped = {};
- list.forEach(c => {
-   let key = c.name.trim().toUpperCase();
-   if(!grouped[key]) grouped[key] = [];
-   grouped[key].push(c);
- });
-
  let rowsHtml = '';
- for(let nameKey in grouped){
-   let groupList = grouped[nameKey];
-   let sample = groupList[0];
-   let totalGroupSisa = groupList.reduce((sum, c) => sum + calc(c).sisa, 0);
-   let hasUnsettledDayOne = groupList.some(c => getDays(c) >= 1 && !isCustomerLunas(c));
+ 
+ if(profile.role === 'admin') {
+   let grouped = {};
+   list.forEach(c => {
+     let key = c.name.trim().toUpperCase();
+     if(!grouped[key]) grouped[key] = [];
+     grouped[key].push(c);
+   });
 
-   let groupWaBtn = '';
-   if(hasUnsettledDayOne && sample.phone){
-     let cleanPhone = sample.phone.replace(/\D/g,'');
-     if(cleanPhone.startsWith('0')) cleanPhone = '62' + cleanPhone.slice(1);
-     
-     let msg = `Halo Bapak/Ibu *${sample.name}*,\n\nBerikut adalah rekap rincian tagihan pinjaman Anda di *Dapin Belitang*:\n`;
-     groupList.forEach((c, idx) => {
-       let x = calc(c);
-       if(!isCustomerLunas(c)){
-         let statusMax = x.days > Number(c.max_days||5) ? ' (⚠️ Melebihi Max Hari / Bunga 20%)' : '';
-         msg += `\n📌 *Pinjaman #${idx+1}*\n- Mulai: ${dateFmt(c.start_date)} (${x.days} Hari${statusMax})\n- Pokok: ${money(c.principal)}\n- Denda: ${money(x.pen)}\n- Dibayar: ${money(x.paid)}\n- Sisa: *${money(x.sisa)}*\n`;
+   for(let nameKey in grouped){
+     let groupList = grouped[nameKey];
+     let sample = groupList[0];
+     let totalGroupSisa = groupList.reduce((sum, c) => sum + calc(c).sisa, 0);
+     let hasUnsettledDayOne = groupList.some(c => getDays(c) >= 1 && !isCustomerLunas(c));
+
+     let groupWaBtn = '';
+     if(hasUnsettledDayOne && sample.phone){
+       let cleanPhone = sample.phone.replace(/\D/g,'');
+       if(cleanPhone.startsWith('0')) cleanPhone = '62' + cleanPhone.slice(1);
+       
+       let msg = `Halo Bapak/Ibu *${sample.name}*,\n\nBerikut adalah rekap rincian tagihan pinjaman Anda di *Dapin Belitang*:\n`;
+       groupList.forEach((c, idx) => {
+         let x = calc(c);
+         if(!isCustomerLunas(c)){
+           let statusMax = x.days > Number(c.max_days||5) ? ' (⚠️ Melebihi Max Hari / Bunga 20%)' : '';
+           msg += `\n📌 *Pinjaman #${idx+1}*\n- Mulai: ${dateFmt(c.start_date)} (${x.days} Hari${statusMax})\n- Pokok: ${money(c.principal)}\n- Denda: ${money(x.pen)}\n- Dibayar: ${money(x.paid)}\n- Sisa: *${money(x.sisa)}*\n`;
+         }
+       });
+       msg += `\n💰 *TOTAL KESELURUHAN YANG HARUS DIBAYAR: ${money(totalGroupSisa)}*\n\nMohon segera melakukan pelunasan. Terima kasih!`;
+
+       let waUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}`;
+       groupWaBtn = `<a href="${waUrl}" target="_blank" class="wa" style="margin-left:10px;padding:3px 8px;font-size:11px">💬 Kirim WA Rekap Rinci</a>`;
+     }
+
+     rowsHtml += `<tr style="background:#e2e8f0;font-weight:bold"><td colspan="11">👤 Nasabah: ${esc(sample.name)} <span style="font-weight:normal;color:#475569">(${sample.phone||'No HP -'})</span> ${groupWaBtn}</td></tr>`;
+
+     groupList.forEach(c => {
+       let x=calc(c),inv=investors.find(i=>i.id===c.investor_id);
+       let lunas = isCustomerLunas(c);
+       let settledDisplay = c.settled_date ? dateFmt(c.settled_date) : (lunas ? '<span class="muted" style="font-size:11px">Belum diset</span>' : '-');
+       
+       let isDayOneOrMore = x.days >= 1 && !lunas;
+       let waButton = '';
+       if(isDayOneOrMore && c.phone){
+         let cleanPhone = c.phone.replace(/\D/g,'');
+         if(cleanPhone.startsWith('0')) cleanPhone = '62' + cleanPhone.slice(1);
+         
+         let statusMaxText = x.days > Number(c.max_days||5) ? ' (⚠️ Melebihi Batas Max Hari / Bunga 20%)' : '';
+         let msg = `Halo Bapak/Ibu *${c.name}*,\n\nIni adalah pengingat otomatis dari *Dapin Belitang* bahwa pinjaman Anda telah berjalan selama *${x.days} hari*${statusMaxText} dan status saat ini *BELUM LUNAS*.\n\n📋 *Rincian Tagihan:*\n- Tanggal Mulai: ${dateFmt(c.start_date)}\n- Batas Max Hari: ${c.max_days||5} Hari\n- Pokok Pinjaman: ${money(c.principal)}\n- Denda Berjalan: ${money(x.pen)}\n- Total Sudah Dibayar: ${money(x.paid)}\n📌 *Sisa Hutang Saat Ini: ${money(x.sisa)}*\n\nMohon segera melakukan pelunasan. Terima kasih!`;
+         
+         let waUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}`;
+         waButton = `<a href="${waUrl}" target="_blank" class="wa" style="margin-top:4px">💬 Kirim WA</a>`;
        }
+
+       let dayStyle = x.days > Number(c.max_days||5) ? 'color:#dc2626;font-weight:bold;' : '';
+
+       rowsHtml += `<tr>
+        <td style="padding-left:25px"><small>Pinjaman ID: ${c.id.slice(0,6)}</small></td>
+        <td>${esc(inv?.name||'-')}</td>
+        <td>${dateFmt(c.start_date)}</td>
+        <td>${money(c.principal)}</td>
+        <td style="${dayStyle}">${x.days} <small>(${c.max_days||5}hr)</small></td>
+        <td>${money(x.pen)}</td>
+        <td>${money(x.paid)}</td>
+        <td><b>${money(x.sisa)}</b></td>
+        <td>${settledDisplay}</td>
+        <td><span class="badge ${lunas?'ok':'warn'}">${lunas?'LUNAS':'BELUM LUNAS'}</span></td>
+        <td>
+         <button class="btn gray" onclick="openCustomer('${c.id}')">Edit</button> 
+         <button class="btn primary" onclick="addPayment('${c.id}')">Bayar</button>
+         ${waButton}
+        </td>
+       </tr>`;
      });
-     msg += `\n💰 *TOTAL KESELURUHAN YANG HARUS DIBAYAR: ${money(totalGroupSisa)}*\n\nMohon segera melakukan pelunasan. Terima kasih!`;
-
-     let waUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}`;
-     groupWaBtn = `<a href="${waUrl}" target="_blank" class="wa" style="margin-left:10px;padding:3px 8px;font-size:11px">💬 Kirim WA Rekap Rinci</a>`;
    }
-
-   rowsHtml += `<tr style="background:#e2e8f0;font-weight:bold"><td colspan="11">👤 Nasabah: ${esc(sample.name)} <span style="font-weight:normal;color:#475569">(${sample.phone||'No HP -'})</span> ${groupWaBtn}</td></tr>`;
-
-   groupList.forEach(c => {
+ } else {
+   // Tampilan khusus Investor: Nama dan No HP nasabah disembunyikan
+   list.forEach(c => {
      let x=calc(c),inv=investors.find(i=>i.id===c.investor_id);
      let lunas = isCustomerLunas(c);
      let settledDisplay = c.settled_date ? dateFmt(c.settled_date) : (lunas ? '<span class="muted" style="font-size:11px">Belum diset</span>' : '-');
-     
-     let isDayOneOrMore = x.days >= 1 && !lunas;
-     let waButton = '';
-     if(isDayOneOrMore && c.phone){
-       let cleanPhone = c.phone.replace(/\D/g,'');
-       if(cleanPhone.startsWith('0')) cleanPhone = '62' + cleanPhone.slice(1);
-       
-       let statusMaxText = x.days > Number(c.max_days||5) ? ' (⚠️ Melebihi Batas Max Hari / Bunga 20%)' : '';
-       let msg = `Halo Bapak/Ibu *${c.name}*,\n\nIni adalah pengingat otomatis dari *Dapin Belitang* bahwa pinjaman Anda telah berjalan selama *${x.days} hari*${statusMaxText} dan status saat ini *BELUM LUNAS*.\n\n📋 *Rincian Tagihan:*\n- Tanggal Mulai: ${dateFmt(c.start_date)}\n- Batas Max Hari: ${c.max_days||5} Hari\n- Pokok Pinjaman: ${money(c.principal)}\n- Denda Berjalan: ${money(x.pen)}\n- Total Sudah Dibayar: ${money(x.paid)}\n📌 *Sisa Hutang Saat Ini: ${money(x.sisa)}*\n\nMohon segera melakukan pelunasan. Terima kasih!`;
-       
-       let waUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}`;
-       waButton = `<a href="${waUrl}" target="_blank" class="wa" style="margin-top:4px">💬 Kirim WA</a>`;
-     }
-
      let dayStyle = x.days > Number(c.max_days||5) ? 'color:#dc2626;font-weight:bold;' : '';
 
      rowsHtml += `<tr>
-      <td style="padding-left:25px"><small>Pinjaman ID: ${c.id.slice(0,6)}</small></td>
+      <td><small style="color:#64748b">Pinjaman ID: ${c.id.slice(0,6)}</small></td>
       <td>${esc(inv?.name||'-')}</td>
       <td>${dateFmt(c.start_date)}</td>
       <td>${money(c.principal)}</td>
@@ -255,11 +283,7 @@ function render(){
       <td><b>${money(x.sisa)}</b></td>
       <td>${settledDisplay}</td>
       <td><span class="badge ${lunas?'ok':'warn'}">${lunas?'LUNAS':'BELUM LUNAS'}</span></td>
-      <td class="${profile.role==='admin'?'':'hidden'}">
-       <button class="btn gray" onclick="openCustomer('${c.id}')">Edit</button> 
-       <button class="btn primary" onclick="addPayment('${c.id}')">Bayar</button>
-       ${waButton}
-      </td>
+      <td class="hidden"></td>
      </tr>`;
    });
  }
