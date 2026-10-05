@@ -217,7 +217,7 @@ function render(){
            msg += `\n📌 *Pinjaman #${idx+1}*\n- Mulai: ${dateFmt(c.start_date)} (${x.days} Hari${statusMax})\n- Pokok: ${money(c.principal)}\n- Denda: ${money(x.pen)}\n- Dibayar: ${money(x.paid)}\n- Sisa: *${money(x.sisa)}*\n`;
          }
        });
-       msg += `\n💰 *TOTAL KESELURUHAN YANG HARUS DIBAYAR: ${money(totalGroupSisa)}*\n\nMohon segera melakukan pelunasan. Terima kasih!`;
+       msg += `\n💰 *TOTAL KESELURUHAN YANG HARUS DIBAYAR: ${money(totalGroupSisa)}*\n\n💳 Pembayaran dapat dikirim melalui No. Rekening *SEABANK 901734889540* a.n. *NUR AJI PRAKOSO*.\n\nMohon segera melakukan pelunasan dan konfirmasi setelah transfer. Terima kasih!`;
 
        let waUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}`;
        groupWaBtn = `<a href="${waUrl}" target="_blank" class="wa" style="margin-left:10px;padding:3px 8px;font-size:11px">💬 Kirim WA Rekap Rinci</a>`;
@@ -237,7 +237,7 @@ function render(){
          if(cleanPhone.startsWith('0')) cleanPhone = '62' + cleanPhone.slice(1);
          
          let statusMaxText = x.days > Number(c.max_days||5) ? ' (⚠️ Melebihi Batas Max Hari / Bunga 20%)' : '';
-         let msg = `Halo Bapak/Ibu *${c.name}*,\n\nIni adalah pengingat otomatis dari *Dapin Belitang* bahwa pinjaman Anda telah berjalan selama *${x.days} hari*${statusMaxText} dan status saat ini *BELUM LUNAS*.\n\n📋 *Rincian Tagihan:*\n- Tanggal Mulai: ${dateFmt(c.start_date)}\n- Batas Max Hari: ${c.max_days||5} Hari\n- Pokok Pinjaman: ${money(c.principal)}\n- Denda Berjalan: ${money(x.pen)}\n- Total Sudah Dibayar: ${money(x.paid)}\n📌 *Sisa Hutang Saat Ini: ${money(x.sisa)}*\n\nMohon segera melakukan pelunasan. Terima kasih!`;
+         let msg = `Halo Bapak/Ibu *${c.name}*,\n\nIni adalah pengingat otomatis dari *Dapin Belitang* bahwa pinjaman Anda telah berjalan selama *${x.days} hari*${statusMaxText} dan status saat ini *BELUM LUNAS*.\n\n📋 *Rincian Tagihan:*\n- Tanggal Mulai: ${dateFmt(c.start_date)}\n- Batas Max Hari: ${c.max_days||5} Hari\n- Pokok Pinjaman: ${money(c.principal)}\n- Denda Berjalan: ${money(x.pen)}\n- Total Sudah Dibayar: ${money(x.paid)}\n📌 *Sisa Hutang Saat Ini: ${money(x.sisa)}*\n\n💳 Pembayaran dapat dikirim melalui No. Rekening *SEABANK 901734889540* a.n. *NUR AJI PRAKOSO*.\n\nMohon segera melakukan pelunasan. Terima kasih!`;
          
          let waUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}`;
          waButton = `<a href="${waUrl}" target="_blank" class="wa" style="margin-top:4px">💬 Kirim WA</a>`;
@@ -265,7 +265,6 @@ function render(){
      });
    }
  } else {
-   // Tampilan khusus Investor: Nama & No HP nasabah serta tombol WhatsApp sepenuhnya disembunyikan
    list.forEach(c => {
      let x=calc(c),inv=investors.find(i=>i.id===c.investor_id);
      let lunas = isCustomerLunas(c);
