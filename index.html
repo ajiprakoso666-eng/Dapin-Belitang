@@ -265,7 +265,7 @@ function render(){
      });
    }
  } else {
-   // Tampilan khusus Investor: Nama dan No HP nasabah disembunyikan
+   // Tampilan khusus Investor: Nama & No HP nasabah serta tombol WhatsApp sepenuhnya disembunyikan
    list.forEach(c => {
      let x=calc(c),inv=investors.find(i=>i.id===c.investor_id);
      let lunas = isCustomerLunas(c);
