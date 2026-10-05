@@ -265,6 +265,7 @@ function render(){
      });
    }
  } else {
+   // Tampilan khusus Investor: Nama & No HP nasabah disensor sepenuhnya
    list.forEach(c => {
      let x=calc(c),inv=investors.find(i=>i.id===c.investor_id);
      let lunas = isCustomerLunas(c);
@@ -272,7 +273,7 @@ function render(){
      let dayStyle = x.days > Number(c.max_days||5) ? 'color:#dc2626;font-weight:bold;' : '';
 
      rowsHtml += `<tr>
-      <td><small style="color:#64748b">Pinjaman ID: ${c.id.slice(0,6)}</small></td>
+      <td><span style="font-weight:600;color:#334155">Nasabah #${c.id.slice(0,6)}</span><br><small style="color:#94a3b8">(No. HP disembunyikan)</small></td>
       <td>${esc(inv?.name||'-')}</td>
       <td>${dateFmt(c.start_date)}</td>
       <td>${money(c.principal)}</td>
