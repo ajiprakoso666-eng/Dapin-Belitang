@@ -21,7 +21,7 @@
 <div id="adminBar" class="toolbar hidden"><button class="btn primary" onclick="openCustomer()">＋ Nasabah</button><button class="btn primary" onclick="openInvestor()">＋ Investor</button><button class="btn gray" onclick="refresh()">↻ Refresh</button><button class="btn danger" onclick="logout()">Keluar</button></div>
 <div id="investorBar" class="toolbar hidden"><span id="investorName" class="btn gray"></span><button class="btn gray" onclick="refresh()">↻ Refresh</button><button class="btn danger" onclick="logout()">Keluar</button></div>
 <div class="panel"><div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap"><h2>Daftar Pinjaman Nasabah</h2><input id="search" class="search" placeholder="Cari..." oninput="render()"></div><div class="table-wrap"><table><thead><tr><th>Nasabah</th><th>Investor</th><th>Mulai</th><th>Pokok</th><th>Hari</th><th>Denda</th><th>Dibayar</th><th>Sisa</th><th>Tgl Lunas</th><th>Status</th><th id="actHead">Aksi</th></tr></thead><tbody id="rows"></tbody></table></div></div>
-<div class="panel"><h2>Ringkasan Bagi Hasil & Modal Investor</h2><div class="table-wrap"><table><thead><tr><th>Investor</th><th>Total Modal</th><th>Modal Aktif</th><th>Modal Sisa</th><th>Total Laba Investor</th><th>Hak Bersih Dapin</th><th>Aksi</th></tr></thead><tbody id="investorRows"></tbody></table></div></div>
+<div class="panel"><h2>Ringkasan Bagi Hasil & Modal Investor</h2><div class="table-wrap"><table><thead><tr><th>Investor</th><th>Total Modal</th><th>Modal Aktif</th><th>Modal Sisa</th><th>Total Laba Investor</th><th id="dapinHead">Hak Bersih Dapin</th><th>Aksi</th></tr></thead><tbody id="investorRows"></tbody></table></div></div>
 </div>
 
 <div id="customerModal" class="modal">
@@ -159,7 +159,10 @@ async function load(){
  document.getElementById('loginView').classList.add('hidden');document.getElementById('app').classList.remove('hidden');
  welcome.textContent=(profile.role==='admin'?'Admin':'Investor')+' • '+(profile.full_name||'');
  adminBar.classList.toggle('hidden',profile.role!=='admin');investorBar.classList.toggle('hidden',profile.role==='admin');
- investorName.textContent=profile.investors?.name||'';actHead.classList.toggle('hidden',profile.role!=='admin');render();
+ investorName.textContent=profile.investors?.name||'';
+ actHead.classList.toggle('hidden',profile.role!=='admin');
+ document.getElementById('dapinHead').classList.toggle('hidden',profile.role!=='admin');
+ render();
 }
 function render(){
  const q=(search.value||'').toLowerCase();
@@ -265,7 +268,6 @@ function render(){
      });
    }
  } else {
-   // Tampilan khusus Investor: Nama & No HP nasabah disensor sepenuhnya
    list.forEach(c => {
      let x=calc(c),inv=investors.find(i=>i.id===c.investor_id);
      let lunas = isCustomerLunas(c);
@@ -317,13 +319,17 @@ function render(){
   let currentProfitInvestor = Math.max(0, rawSettledProfitInvestor - totalWithdrawn);
   let maxWithdraw = availableCapital + currentProfitInvestor;
   
+  let dapinCellHtml = profile.role === 'admin' 
+    ? `<td><span style="color:#2563eb;font-weight:700">${money(settledProfitDapinNet)}</span> (${100 - Number(i.share_percent)}% / sisa)</td>` 
+    : `<td class="hidden"></td>`;
+
   return `<tr>
     <td><b>${esc(i.name)}</b></td>
     <td>${money(totalCapital)}</td>
     <td><span style="color:#d97706;font-weight:700">${money(activePrincipal)}</span></td>
     <td><span style="color:#16a34a;font-weight:700">${money(availableCapital)}</span></td>
     <td><b>${money(currentProfitInvestor)}</b></td>
-    <td><span style="color:#2563eb;font-weight:700">${money(settledProfitDapinNet)}</span> (${100 - Number(i.share_percent)}% / sisa)</td>
+    ${dapinCellHtml}
     <td>${profile.role==='admin'?`
       <button class="btn success" onclick="withdrawInvestor('${i.id}', ${maxWithdraw},${availableCapital}, ${totalCapital},${currentProfitInvestor})" style="margin-right:3px;padding:6px 10px;font-size:12px">Withdraw</button>
       <button class="btn primary" onclick="showHistory('${i.id}', '${esc(i.name)}')" style="margin-right:3px;padding:6px 10px;font-size:12px">Riwayat WD</button>
