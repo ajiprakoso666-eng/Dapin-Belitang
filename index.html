@@ -26,8 +26,7 @@
     <h2>Daftar Pinjaman Aktif (Belum Lunas)</h2>
     <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
       <select id="sortBy" class="search" style="cursor:pointer" onchange="render()">
-        <option value="default">📁 Urutkan / Filter (Default)</option>
-        <option value="unpaid">⚠️ Belum Lunas Saja</option>
+        <option value="default">📁 Urutkan (Default)</option>
         <option value="nasabah">👤 Sort by: Nasabah (A-Z)</option>
         <option value="investor">💼 Sort by: Investor (A-Z)</option>
       </select>
@@ -144,8 +143,14 @@ function getDays(c){
 function penalty(c){
   let d = getDays(c);
   let maxD = Number(c.max_days || 5);
-  let rate = d > maxD ? 0.20 : 0.10;
-  return Number(c.principal) * rate * d;
+  let principal = Number(c.principal);
+  
+  let totalPenalty = 0;
+  for (let i = 1; i <= d; i++) {
+    let rate = i > maxD ? 0.20 : 0.10;
+    totalPenalty += principal * rate;
+  }
+  return totalPenalty;
 }
 
 function paidFor(id){return payments.filter(p=>p.customer_id===id).reduce((a,p)=>a+Number(p.amount),0)}
@@ -300,7 +305,6 @@ function render(){
  
  list = list.filter(c=>(c.name+' '+(c.phone||'')).toLowerCase().includes(q));
 
- // Terapkan sort ala Windows Explorer
  if(sortVal === 'nasabah'){
    list.sort((a, b) => a.name.localeCompare(b.name));
  } else if(sortVal === 'investor'){
@@ -329,13 +333,8 @@ function render(){
  realProfitCard.textContent = money(realProfit);
  pendingProfitCard.textContent = money(pendingProfit);
 
- // Pisahkan aktif dan lunas
  let activeList = list.filter(c => !isCustomerLunas(c));
  let lunasList = list.filter(c => isCustomerLunas(c));
-
- if(sortVal === 'unpaid'){
-   lunasList = []; // Jika filter "Belum Lunas Saja" dipilih
- }
 
  rows.innerHTML = renderTableRows(activeList, false);
  lunasRows.innerHTML = renderTableRows(lunasList, true);
