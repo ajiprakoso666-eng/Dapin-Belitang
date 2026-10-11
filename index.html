@@ -171,4 +171,242 @@ function syncPhoneByName(){
 }
 
 async function login(){
-  const {error}=await sb.auth.signInWithPassword({email:email
+  const {error}=await sb.auth.signInWithPassword({email:email.value,password:password.value});
+  loginMsg.textContent=error?error.message:'';
+}
+
+async function logout(){
+  await sb.auth.signOut();
+}
+
+async function load(){
+ const {data:userObj, error:userErr} = await sb.auth.getUser();
+ if(userErr || !userObj.user) return;
+
+ const {data:p,error:pe}=await sb.from('profiles').select('*,investors(*)').eq('id', userObj.user.id).single();
+ if(pe){alert(pe.message);return}
+ profile=p;
+
+ const [ir,cr,pr,wr]=await Promise.all([
+   sb.from('investors').select('*').order('name'),
+   sb.from('customers').select('*').order('name',{ascending:true}),
+   sb.from('payments').select('*').order('payment_date',{ascending:false}),
+   sb.from('investor_withdrawals').select('*')
+ ]);
+ if(ir.error||cr.error||pr.error){alert((ir.error||cr.error||pr.error).message);return}
+ investors=ir.data||[];customers=cr.data||[];payments=pr.data||[]; withdrawals=wr.data||[];
+ 
+ document.getElementById('loginView').classList.add('hidden');
+ document.getElementById('app').classList.remove('hidden');
+ 
+ welcome.textContent=(profile.role==='admin'?'Admin':'Investor')+' • '+(profile.full_name||'');
+ adminBar.classList.toggle('hidden',profile.role!=='admin');
+ investorBar.classList.toggle('hidden',profile.role==='admin');
+ investorName.textContent=profile.investors?.name||'';
+ actHead.classList.toggle('hidden',profile.role!=='admin');
+ document.getElementById('actHeadLunas').classList.toggle('hidden',profile.role!=='admin');
+ document.getElementById('dapinHead').classList.toggle('hidden',profile.role!=='admin');
+ render();
+}
+
+function renderTableRows(listToRender, isLunasTable){
+  let rowsHtml = '';
+  const sortVal = document.getElementById('sortBy').value;
+
+  if(profile.role === 'admin' && sortVal === 'default') {
+    let grouped = {};
+    listToRender.forEach(c => {
+      let key = c.name.trim().toUpperCase();
+      if(!grouped[key]) grouped[key] = [];
+      grouped[key].push(c);
+    });
+
+    for(let nameKey in grouped){
+      let groupList = grouped[nameKey];
+      let sample = groupList[0];
+      let totalGroupSisa = groupList.reduce((sum, c) => sum + calc(c).sisa, 0);
+      let hasUnsettledDayOne = groupList.some(c => getDays(c) >= 1 && !isCustomerLunas(c));
+
+      let groupWaBtn = '';
+      if(!isLunasTable && hasUnsettledDayOne && sample.phone){
+        let cleanPhone = sample.phone.replace(/\D/g,'');
+        if(cleanPhone.startsWith('0')) cleanPhone = '62' + cleanPhone.slice(1);
+        
+        let msg = `Halo Bapak/Ibu *${sample.name}*,\n\nBerikut adalah rekap rincian tagihan pinjaman Anda di *Dapin Belitang*:\n`;
+        groupList.forEach((c, idx) => {
+          let x = calc(c);
+          if(!isCustomerLunas(c)){
+            let statusMax = x.days > Number(c.max_days||5) ? ' (⚠️ Melebihi Max Hari / Bunga 20%)' : '';
+            msg += `\n📌 *Pinjaman #${idx+1}*\n- Mulai: ${dateFmt(c.start_date)} (${x.days} Hari${statusMax})\n- Pokok: ${money(c.principal)}\n- Denda: ${money(x.pen)}\n- Dibayar: ${money(x.paid)}\n- Sisa: *${money(x.sisa)}*\n`;
+          }
+        });
+        msg += `\n💰 *TOTAL KESELURUHAN YANG HARUS DIBAYAR: ${money(totalGroupSisa)}*\n\n💳 Pembayaran dapat dikirim melalui No. Rekening *SEABANK 901734889540* a.n. *NUR AJI PRAKOSO*.\n\nMohon segera melakukan pelunasan dan konfirmasi setelah transfer. Terima kasih!`;
+
+        let waUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}`;
+        groupWaBtn = `<a href="${waUrl}" target="_blank" class="wa" style="margin-left:10px;padding:3px 8px;font-size:11px">💬 Kirim WA Rekap Rinci</a>`;
+      }
+
+      rowsHtml += `<tr style="background:#e2e8f0;font-weight:bold"><td colspan="11">👤 Nasabah: ${esc(sample.name)} <span style="font-weight:normal;color:#475569">(${sample.phone||'No HP -'})</span> ${groupWaBtn}</td></tr>`;
+
+      groupList.forEach(c => {
+        rowsHtml += generateCustomerRow(c, false);
+      });
+    }
+  } else {
+    listToRender.forEach(c => {
+      rowsHtml += generateCustomerRow(c, true);
+    });
+  }
+  return rowsHtml || '<tr><td colspan="11" class="muted">Tidak ada data.</td></tr>';
+}
+
+function generateCustomerRow(c, showCustomerNameDirectly){
+  let x=calc(c), inv=investors.find(i=>i.id===c.investor_id);
+  let lunas = isCustomerLunas(c);
+  let settledDisplay = c.settled_date ? dateFmt(c.settled_date) : (lunas ? '<span class="muted" style="font-size:11px">Belum diset</span>' : '-');
+  let dayStyle = x.days > Number(c.max_days||5) ? 'color:#dc2626;font-weight:bold;' : '';
+
+  let nameColumnContent = '';
+  if(profile.role === 'admin') {
+    if(showCustomerNameDirectly) {
+      nameColumnContent = `<b>${esc(c.name)}</b><br><small style="color:#64748b">ID: ${c.id.slice(0,6)}</small>`;
+    } else {
+      nameColumnContent = `<small style="padding-left:15px">Pinjaman ID: ${c.id.slice(0,6)}</small>`;
+    }
+  } else {
+    nameColumnContent = `<span style="font-weight:600;color:#334155">Nasabah #${c.id.slice(0,6)}</span><br><small style="color:#94a3b8">(No. HP disembunyikan)</small>`;
+  }
+
+  let waButton = '';
+  if(profile.role === 'admin' && !lunas) {
+    let isDayOneOrMore = x.days >= 1;
+    if(isDayOneOrMore && c.phone){
+      let cleanPhone = c.phone.replace(/\D/g,'');
+      if(cleanPhone.startsWith('0')) cleanPhone = '62' + cleanPhone.slice(1);
+      
+      let statusMaxText = x.days > Number(c.max_days||5) ? ' (⚠️ Melebihi Batas Max Hari / Bunga 20%)' : '';
+      let msg = `Halo Bapak/Ibu *${c.name}*,\n\nIni adalah pengingat otomatis dari *Dapin Belitang* bahwa pinjaman Anda telah berjalan selama *${x.days} hari*${statusMaxText} dan status saat ini *BELUM LUNAS*.\n\n📋 *Rincian Tagihan:*\n- Tanggal Mulai: ${dateFmt(c.start_date)}\n- Batas Max Hari: ${c.max_days||5} Hari\n- Pokok Pinjaman: ${money(c.principal)}\n- Denda Berjalan: ${money(x.pen)}\n- Total Sudah Dibayar: ${money(x.paid)}\n📌 *Sisa Hutang Saat Ini: ${money(x.sisa)}*\n\n💳 Pembayaran dapat dikirim melalui No. Rekening *SEABANK 901734889540* a.n. *NUR AJI PRAKOSO*.\n\nMohon segera melakukan pelunasan. Terima kasih!`;
+      
+      let waUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}`;
+      waButton = `<a href="${waUrl}" target="_blank" class="wa" style="margin-top:4px">💬 Kirim WA</a>`;
+    }
+  }
+
+  return `<tr>
+   <td>${nameColumnContent}</td>
+   <td>${esc(inv?.name||'-')}</td>
+   <td>${dateFmt(c.start_date)}</td>
+   <td>${money(c.principal)}</td>
+   <td style="${dayStyle}">${x.days} <small>(${c.max_days||5}hr)</small></td>
+   <td>${money(x.pen)}</td>
+   <td>${money(x.paid)}</td>
+   <td><b>${money(x.sisa)}</b></td>
+   <td>${settledDisplay}</td>
+   <td><span class="badge ${lunas?'ok':'warn'}">${lunas?'LUNAS':'BELUM LUNAS'}</span></td>
+   <td class="${profile.role==='admin'?'':'hidden'}">
+    <button class="btn gray" onclick="openCustomer('${c.id}')">Edit</button> 
+    <button class="btn primary" onclick="addPayment('${c.id}')">Bayar</button>
+    ${waButton}
+   </td>
+  </tr>`;
+}
+
+function render(){
+ const q=(search.value||'').toLowerCase();
+ const sortVal = document.getElementById('sortBy').value;
+ 
+ let list = customers;
+ if(profile.role !== 'admin' && profile.investor_id){
+   list = list.filter(c => c.investor_id === profile.investor_id);
+ }
+ 
+ list = list.filter(c=>(c.name+' '+(c.phone||'')).toLowerCase().includes(q));
+
+ if(sortVal === 'nasabah'){
+   list.sort((a, b) => a.name.localeCompare(b.name));
+ } else if(sortVal === 'investor'){
+   list.sort((a, b) => {
+     let invA = investors.find(i => i.id === a.investor_id)?.name || '';
+     let invB = investors.find(i => i.id === b.investor_id)?.name || '';
+     return invA.localeCompare(invB);
+   });
+ }
+
+ count.textContent = list.length;
+ principal.textContent = money(list.reduce((a,c)=>a+Number(c.principal),0));
+ paid.textContent = money(list.reduce((a,c)=>a+paidFor(c.id),0));
+
+ let realProfit = 0;
+ let pendingProfit = 0;
+ list.forEach(c => {
+  let x = calc(c);
+  let estProfit = Math.max(0, x.total - Number(c.principal));
+  if(isCustomerLunas(c)){
+    realProfit += estProfit;
+  } else {
+    pendingProfit += estProfit;
+  }
+ });
+ realProfitCard.textContent = money(realProfit);
+ pendingProfitCard.textContent = money(pendingProfit);
+
+ let activeList = list.filter(c => !isCustomerLunas(c));
+ let lunasList = list.filter(c => isCustomerLunas(c));
+
+ rows.innerHTML = renderTableRows(activeList, false);
+ lunasRows.innerHTML = renderTableRows(lunasList, true);
+
+ investorRows.innerHTML=investors.filter(i=>profile.role==='admin'||i.id===profile.investor_id).map(i=>{
+  let cs=customers.filter(c=>c.investor_id===i.id);
+  let activePrincipal = cs.filter(c => !isCustomerLunas(c)).reduce((a,c)=>a+Number(c.principal),0);
+  let totalCapital = Number(i.initial_capital || 0);
+  let availableCapital = Math.max(0, totalCapital - activePrincipal);
+
+  let rawSettledProfitInvestor = 0;
+  let settledProfitDapinNet = 0;
+
+  cs.forEach(c => {
+    let x = calc(c);
+    let est = Math.max(0, x.total - Number(c.principal));
+    if(isCustomerLunas(c)){
+      let realCProfit = est;
+      let sharePct = Number(i.share_percent) / 100;
+      let investorPart = realCProfit * sharePct;
+      let dapinNetPart = realCProfit * (1 - sharePct);
+      
+      rawSettledProfitInvestor += investorPart;
+      settledProfitDapinNet += dapinNetPart;
+    }
+  });
+
+  let totalWithdrawn = withdrawals.filter(w=>w.investor_id===i.id).reduce((sum,w)=>sum+Number(w.amount),0);
+  let currentProfitInvestor = Math.max(0, rawSettledProfitInvestor - totalWithdrawn);
+  let maxWithdraw = availableCapital + currentProfitInvestor;
+  
+  let dapinCellHtml = profile.role === 'admin' 
+    ? `<td><span style="color:#2563eb;font-weight:700">${money(settledProfitDapinNet)}</span> (${100 - Number(i.share_percent)}% / sisa)</td>` 
+    : `<td class="hidden"></td>`;
+
+  return `<tr>
+    <td><b>${esc(i.name)}</b></td>
+    <td>${money(totalCapital)}</td>
+    <td><span style="color:#d97706;font-weight:700">${money(activePrincipal)}</span></td>
+    <td><span style="color:#16a34a;font-weight:700">${money(availableCapital)}</span></td>
+    <td><b>${money(currentProfitInvestor)}</b></td>
+    ${dapinCellHtml}
+    <td>${profile.role==='admin'?`
+      <button class="btn success" onclick="withdrawInvestor('${i.id}', ${maxWithdraw},${availableCapital}, ${totalCapital},${currentProfitInvestor})" style="margin-right:3px;padding:6px 10px;font-size:12px">Withdraw</button>
+      <button class="btn primary" onclick="showHistory('${i.id}', '${esc(i.name)}')" style="margin-right:3px;padding:6px 10px;font-size:12px">Riwayat WD</button>
+      <button class="btn gray" onclick="openInvestor('${i.id}')" style="margin-right:3px;padding:6px 10px;font-size:12px">Edit</button>
+      <button class="btn danger" onclick="deleteInvestor('${i.id}')" style="padding:6px 10px;font-size:12px">Hapus</button>`:''}</td>
+  </tr>`
+ }).join('');
+}
+function esc(s){return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'} [m]))}
+
+function openCustomer(id=''){
+  cid.value=id;
+  customerTitle.textContent=id?'Edit Nasabah':'Nasabah Baru';
+  cinv.innerHTML=investors.map(i=>{
+    let cs=customers.filter(c=>c.investor_id===i.id);
+    let activePrincipal = cs.filter(c => !isCustomerLunas(c)).
