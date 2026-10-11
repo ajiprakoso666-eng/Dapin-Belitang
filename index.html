@@ -78,3 +78,698 @@
       <button class="btn gray" onclick="closeModal('customerModal')">Batal</button>
       <button class="btn primary" onclick="saveCustomer()">Simpan</button>
     </div>
+  </div>
+</div>
+
+<div id="investorModal" class="modal">
+  <div class="modalbox">
+    <h2 id="investorTitleModal">Investor</h2>
+    <input type="hidden" id="iid">
+    <div class="field"><label>Nama Investor</label><input id="iname"></div>
+    <div class="field"><label>Email</label><input id="iemail" type="email"></div>
+    <div class="field"><label>Bagi Hasil (%)</label><input id="ishare" type="number"></div>
+    
+    <div id="editCapitalSection" class="field full hidden" style="background:#f8fafc;padding:12px;border-radius:10px;border:1px solid #e2e8f0;">
+      <label id="capitalInfoLabel" style="color:#2563eb;margin-bottom:8px">Total Modal Saat Ini: Rp0</label>
+      <div style="display:flex;gap:10px;align-items:center">
+        <div style="flex:1">
+          <label>Aksi Modal</label>
+          <select id="capitalAction">
+            <option value="set">Set / Ubah Total Langsung</option>
+            <option value="add">Tambah Modal (+)</option>
+            <option value="sub">Kurangi Modal (-)</option>
+          </select>
+        </div>
+        <div style="flex:1">
+          <label>Nominal (Rp)</label>
+          <input id="icapitalEdit" type="number" placeholder="0">
+        </div>
+      </div>
+    </div>
+
+    <div id="newCapitalSection" class="field">
+      <label>Total Modal Awal (Rp)</label><input id="icapitalNew" type="number" placeholder="Contoh: 10000000">
+    </div>
+
+    <div class="field"><label>Password Login</label><input id="ipassword" type="password" autocomplete="new-password" placeholder="Minimal 8 karakter (kosongkan jika tidak diubah)"></div>
+    <div class="toolbar" style="justify-content:flex-end;margin-top:10px">
+      <button class="btn gray" onclick="closeModal('investorModal')">Batal</button>
+      <button class="btn primary" onclick="saveInvestor()">Simpan</button>
+    </div>
+  </div>
+</div>
+
+<div id="historyModal" class="modal">
+  <div class="modalbox" style="max-width:700px">
+    <h2 id="historyTitle">Riwayat Withdraw</h2>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>No</th>
+            <th>Tanggal</th>
+            <th>Jumlah WD</th>
+            <th>Aksi</th>
+          </tr>
+        </thead>
+        <tbody id="historyRows"></tbody>
+      </table>
+    </div>
+    <div class="toolbar" style="justify-content:flex-end;margin-top:15px">
+      <button class="btn gray" onclick="closeModal('historyModal')">Tutup</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const SUPABASE_URL='https://chqdgxjdfbsatzoivpwb.supabase.co';
+const SUPABASE_KEY='sb_publishable_vq_6la2B3uYk1c2SdXQYyw_KTe0QJCy';
+const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+let profile=null, customers=[], payments=[], investors=[], withdrawals=[];
+const money=n=>new Intl.NumberFormat('id-ID',{style:'currency',currency:'IDR',maximumFractionDigits:0}).format(Number(n)||0);
+const dateFmt=s=>s?new Date(s+'T00:00:00').toLocaleDateString('id-ID'): '-';
+
+function getDays(c){
+  let end = c.settled_date ? new Date(c.settled_date+'T00:00:00') : new Date();
+  let start = new Date(c.start_date+'T00:00:00');
+  return Math.max(0, Math.floor((end - start)/86400000));
+}
+
+function penalty(c){
+  let d = getDays(c);
+  let principal = Number(c.principal);
+  let totalPenalty = 0;
+
+  if(c.rate_type === 'special'){
+    for (let i = 1; i <= d; i++) {
+      let rate = i <= 5 ? 0.15 : 0.30;
+      totalPenalty += principal * rate;
+    }
+  } else {
+    let maxD = Number(c.max_days || 5);
+    for (let i = 1; i <= d; i++) {
+      let rate = i > maxD ? 0.20 : 0.10;
+      totalPenalty += principal * rate;
+    }
+  }
+  return totalPenalty;
+}
+
+function paidFor(id){return payments.filter(p=>p.customer_id===id).reduce((a,p)=>a+Number(p.amount),0)}
+function calc(c){let d=getDays(c),pen=penalty(c),paid=paidFor(c.id),total=Number(c.principal)+pen;return {days:d,pen,paid,total,sisa:Math.max(0,total-paid)}}
+
+function isCustomerLunas(c){
+  let x = calc(c);
+  return x.sisa === 0 || !!c.settled_date;
+}
+
+function syncPhoneByName(){
+  let typedName = cname.value.trim().toLowerCase();
+  if(!typedName) return;
+  let found = customers.find(c => c.name.trim().toLowerCase() === typedName && c.phone && c.phone.trim() !== '');
+  if(found){
+    cphone.value = found.phone;
+  }
+}
+
+document.getElementById('loginBtn').addEventListener('click', async () => {
+  const emailInput = document.getElementById('email').value.trim();
+  const passwordInput = document.getElementById('password').value;
+  const msgEl = document.getElementById('loginMsg');
+
+  msgEl.textContent = 'Menghubungkan ke server...';
+  
+  try {
+    const { data, error } = await sb.auth.signInWithPassword({
+      email: emailInput,
+      password: passwordInput
+    });
+
+    if (error) {
+      msgEl.textContent = 'Gagal Login: ' + error.message;
+    } else {
+      msgEl.textContent = '';
+      loadData();
+    }
+  } catch (err) {
+    msgEl.textContent = 'Terjadi kesalahan sistem: ' + err.message;
+  }
+});
+
+async function logout(){
+  await sb.auth.signOut();
+  document.getElementById('app').classList.add('hidden');
+  document.getElementById('loginView').classList.remove('hidden');
+}
+
+async function loadData(){
+  const {data: {session}, error: sessError} = await sb.auth.getSession();
+  if(sessError || !session){
+    document.getElementById('app').classList.add('hidden');
+    document.getElementById('loginView').classList.remove('hidden');
+    return;
+  }
+
+  const user = session.user;
+  const {data:p, error:pe} = await sb.from('profiles').select('*,investors(*)').eq('id', user.id).single();
+  if(pe){
+    document.getElementById('loginMsg').textContent = 'Gagal memuat profil: ' + pe.message;
+    return;
+  }
+  profile = p;
+
+  const [ir, cr, pr, wr] = await Promise.all([
+    sb.from('investors').select('*').order('name'),
+    sb.from('customers').select('*').order('name', {ascending: true}),
+    sb.from('payments').select('*').order('payment_date', {ascending: false}),
+    sb.from('investor_withdrawals').select('*')
+  ]);
+  
+  if(ir.error || cr.error || pr.error){
+    alert((ir.error || cr.error || pr.error).message);
+    return;
+  }
+  
+  investors = ir.data || [];
+  customers = cr.data || [];
+  payments = pr.data || [];
+  withdrawals = wr.data || [];
+
+  document.getElementById('loginView').classList.add('hidden');
+  document.getElementById('app').classList.remove('hidden');
+  
+  welcome.textContent = (profile.role === 'admin' ? 'Admin' : 'Investor') + ' • ' + (profile.full_name || '');
+  adminBar.classList.toggle('hidden', profile.role !== 'admin');
+  investorBar.classList.toggle('hidden', profile.role === 'admin');
+  investorName.textContent = profile.investors?.name || '';
+  actHead.classList.toggle('hidden', profile.role !== 'admin');
+  document.getElementById('actHeadLunas').classList.toggle('hidden', profile.role !== 'admin');
+  document.getElementById('dapinHead').classList.toggle('hidden', profile.role !== 'admin');
+  
+  render();
+}
+
+function renderTableRows(listToRender, isLunasTable){
+  let rowsHtml = '';
+  const sortVal = document.getElementById('sortBy').value;
+
+  if(profile.role === 'admin' && sortVal === 'default') {
+    let grouped = {};
+    listToRender.forEach(c => {
+      let key = c.name.trim().toUpperCase();
+      if(!grouped[key]) grouped[key] = [];
+      grouped[key].push(c);
+    });
+
+    for(let nameKey in grouped){
+      let groupList = grouped[nameKey];
+      let sample = groupList[0];
+      let totalGroupSisa = groupList.reduce((sum, c) => sum + calc(c).sisa, 0);
+      let hasUnsettledDayOne = groupList.some(c => getDays(c) >= 1 && !isCustomerLunas(c));
+
+      let groupWaBtn = '';
+      if(!isLunasTable && hasUnsettledDayOne && sample.phone){
+        let cleanPhone = sample.phone.replace(/\D/g,'');
+        if(cleanPhone.startsWith('0')) cleanPhone = '62' + cleanPhone.slice(1);
+        
+        let msg = `Halo Bapak/Ibu *${sample.name}*,\n\nBerikut adalah rekap rincian tagihan pinjaman Anda di *Dapin Belitang*:\n`;
+        groupList.forEach((c, idx) => {
+          let x = calc(c);
+          if(!isCustomerLunas(c)){
+            let statusMax = x.days > Number(c.max_days||5) ? ' (⚠️ Melebihi Batas Max Hari)' : '';
+            msg += `\n📌 *Pinjaman #${idx+1}*\n- Mulai: ${dateFmt(c.start_date)} (${x.days} Hari${statusMax})\n- Pokok: ${money(c.principal)}\n- Denda: ${money(x.pen)}\n- Dibayar: ${money(x.paid)}\n- Sisa: *${money(x.sisa)}*\n`;
+          }
+        });
+        msg += `\n💰 *TOTAL KESELURUHAN YANG HARUS DIBAYAR: ${money(totalGroupSisa)}*\n\n💳 Pembayaran dapat dikirim melalui No. Rekening *SEABANK 901734889540* a.n. *NUR AJI PRAKOSO*.\n\nMohon segera melakukan pelunasan dan konfirmasi setelah transfer. Terima kasih!`;
+
+        let waUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}`;
+        groupWaBtn = `<a href="${waUrl}" target="_blank" class="wa" style="margin-left:10px;padding:3px 8px;font-size:11px">💬 Kirim WA Rekap Rinci</a>`;
+      }
+
+      rowsHtml += `<tr style="background:#e2e8f0;font-weight:bold"><td colspan="11">👤 Nasabah: ${esc(sample.name)} <span style="font-weight:normal;color:#475569">(${sample.phone||'No HP -'})</span> ${groupWaBtn}</td></tr>`;
+
+      groupList.forEach(c => {
+        rowsHtml += generateCustomerRow(c, false);
+      });
+    }
+  } else {
+    listToRender.forEach(c => {
+      rowsHtml += generateCustomerRow(c, true);
+    });
+  }
+  return rowsHtml || '<tr><td colspan="11" class="muted">Tidak ada data.</td></tr>';
+}
+
+function generateCustomerRow(c, showCustomerNameDirectly){
+  let x=calc(c), inv=investors.find(i=>i.id===c.investor_id);
+  let lunas = isCustomerLunas(c);
+  let settledDisplay = c.settled_date ? dateFmt(c.settled_date) : (lunas ? '<span class="muted" style="font-size:11px">Belum diset</span>' : '-');
+  
+  let rateBadge = c.rate_type === 'special' ? '<br><small style="color:#d97706;font-weight:bold">⚡ Khusus (15%/30%)</small>' : '';
+
+  let nameColumnContent = '';
+  if(profile.role === 'admin') {
+    if(showCustomerNameDirectly) {
+      nameColumnContent = `<b>${esc(c.name)}</b>${rateBadge}<br><small style="color:#64748b">ID: ${c.id.slice(0,6)}</small>`;
+    } else {
+      nameColumnContent = `<small style="padding-left:15px">Pinjaman ID: ${c.id.slice(0,6)} ${c.rate_type==='special'?'(Khusus)':''}</small>`;
+    }
+  } else {
+    nameColumnContent = `<span style="font-weight:600;color:#334155">Nasabah #${c.id.slice(0,6)}</span><br><small style="color:#94a3b8">(No. HP disembunyikan)</small>`;
+  }
+
+  let waButton = '';
+  if(profile.role === 'admin' && !lunas) {
+    let isDayOneOrMore = x.days >= 1;
+    if(isDayOneOrMore && c.phone){
+      let cleanPhone = c.phone.replace(/\D/g,'');
+      if(cleanPhone.startsWith('0')) cleanPhone = '62' + cleanPhone.slice(1);
+      
+      let msg = `Halo Bapak/Ibu *${c.name}*,\n\nIni adalah pengingat otomatis dari *Dapin Belitang* bahwa pinjaman Anda telah berjalan selama *${x.days} hari* dan status saat ini *BELUM LUNAS*.\n\n📋 *Rincian Tagihan:*\n- Tanggal Mulai: ${dateFmt(c.start_date)}\n- Pokok Pinjaman: ${money(c.principal)}\n- Denda Berjalan: ${money(x.pen)}\n- Total Sudah Dibayar: ${money(x.paid)}\n📌 *Sisa Hutang Saat Ini: ${money(x.sisa)}*\n\n💳 Pembayaran dapat dikirim melalui No. Rekening *SEABANK 901734889540* a.n. *NUR AJI PRAKOSO*.\n\nMohon segera melakukan pelunasan. Terima kasih!`;
+      
+      let waUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}`;
+      waButton = `<a href="${waUrl}" target="_blank" class="wa" style="margin-top:4px">💬 Kirim WA</a>`;
+    }
+  }
+
+  return `<tr>
+   <td>${nameColumnContent}</td>
+   <td>${esc(inv?.name||'-')}</td>
+   <td>${dateFmt(c.start_date)}</td>
+   <td>${money(c.principal)}</td>
+   <td>${x.days} <small>(${c.max_days||5}hr)</small></td>
+   <td>${money(x.pen)}</td>
+   <td>${money(x.paid)}</td>
+   <td><b>${money(x.sisa)}</b></td>
+   <td>${settledDisplay}</td>
+   <td><span class="badge ${lunas?'ok':'warn'}">${lunas?'LUNAS':'BELUM LUNAS'}</span></td>
+   <td class="${profile.role==='admin'?'':'hidden'}">
+    <button class="btn gray" onclick="openCustomer('${c.id}')">Edit</button> 
+    <button class="btn primary" onclick="addPayment('${c.id}')">Bayar</button>
+    ${waButton}
+   </td>
+  </tr>`;
+}
+
+function render(){
+ const q=(search.value||'').toLowerCase();
+ const sortVal = document.getElementById('sortBy').value;
+ 
+ let list = customers;
+ if(profile.role !== 'admin' && profile.investor_id){
+   list = list.filter(c => c.investor_id === profile.investor_id);
+ }
+ 
+ list = list.filter(c=>(c.name+' '+(c.phone||'')).toLowerCase().includes(q));
+
+ if(sortVal === 'nasabah'){
+   list.sort((a, b) => a.name.localeCompare(b.name));
+ } else if(sortVal === 'investor'){
+   list.sort((a, b) => {
+     let invA = investors.find(i => i.id === a.investor_id)?.name || '';
+     let invB = investors.find(i => i.id === b.investor_id)?.name || '';
+     return invA.localeCompare(invB);
+   });
+ }
+
+ count.textContent = list.length;
+ principal.textContent = money(list.reduce((a,c)=>a+Number(c.principal),0));
+ paid.textContent = money(list.reduce((a,c)=>a+paidFor(c.id),0));
+
+ let realProfit = 0;
+ let pendingProfit = 0;
+ list.forEach(c => {
+  let x = calc(c);
+  let estProfit = Math.max(0, x.total - Number(c.principal));
+  if(isCustomerLunas(c)){
+    realProfit += estProfit;
+  } else {
+    pendingProfit += estProfit;
+  }
+ });
+ realProfitCard.textContent = money(realProfit);
+ pendingProfitCard.textContent = money(pendingProfit);
+
+ let activeList = list.filter(c => !isCustomerLunas(c));
+ let lunasList = list.filter(c => isCustomerLunas(c));
+
+ rows.innerHTML = renderTableRows(activeList, false);
+ lunasRows.innerHTML = renderTableRows(lunasList, true);
+
+ investorRows.innerHTML=investors.filter(i=>profile.role==='admin'||i.id===profile.investor_id).map(i=>{
+  let cs=customers.filter(c=>c.investor_id===i.id);
+  let activePrincipal = cs.filter(c => !isCustomerLunas(c)).reduce((a,c)=>a+Number(c.principal),0);
+  let totalCapital = Number(i.initial_capital || 0);
+  let availableCapital = Math.max(0, totalCapital - activePrincipal);
+
+  let rawSettledProfitInvestor = 0;
+  let settledProfitDapinNet = 0;
+
+  cs.forEach(c => {
+    let x = calc(c);
+    let est = Math.max(0, x.total - Number(c.principal));
+    if(isCustomerLunas(c)){
+      let realCProfit = est;
+      let sharePct = Number(i.share_percent) / 100;
+      let investorPart = realCProfit * sharePct;
+      let dapinNetPart = realCProfit * (1 - sharePct);
+      
+      rawSettledProfitInvestor += investorPart;
+      settledProfitDapinNet += dapinNetPart;
+    }
+  });
+
+  let totalWithdrawn = withdrawals.filter(w=>w.investor_id===i.id).reduce((sum,w)=>sum+Number(w.amount),0);
+  let currentProfitInvestor = Math.max(0, rawSettledProfitInvestor - totalWithdrawn);
+  let maxWithdraw = availableCapital + currentProfitInvestor;
+  
+  let dapinCellHtml = profile.role === 'admin' 
+    ? `<td><span style="color:#2563eb;font-weight:700">${money(settledProfitDapinNet)}</span> (${100 - Number(i.share_percent)}% / sisa)</td>` 
+    : `<td class="hidden"></td>`;
+
+  return `<tr>
+    <td><b>${esc(i.name)}</b></td>
+    <td>${money(totalCapital)}</td>
+    <td><span style="color:#d97706;font-weight:700">${money(activePrincipal)}</span></td>
+    <td><span style="color:#16a34a;font-weight:700">${money(availableCapital)}</span></td>
+    <td><b>${money(currentProfitInvestor)}</b></td>
+    ${dapinCellHtml}
+    <td>${profile.role==='admin'?`
+      <button class="btn success" onclick="withdrawInvestor('${i.id}', ${maxWithdraw},${availableCapital}, ${totalCapital},${currentProfitInvestor})" style="margin-right:3px;padding:6px 10px;font-size:12px">Withdraw</button>
+      <button class="btn primary" onclick="showHistory('${i.id}', '${esc(i.name)}')" style="margin-right:3px;padding:6px 10px;font-size:12px">Riwayat WD</button>
+      <button class="btn gray" onclick="openInvestor('${i.id}')" style="margin-right:3px;padding:6px 10px;font-size:12px">Edit</button>
+      <button class="btn danger" onclick="deleteInvestor('${i.id}')" style="padding:6px 10px;font-size:12px">Hapus</button>`:''}</td>
+  </tr>`
+ }).join('');
+}
+function esc(s){return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'} [m]))}
+
+function openCustomer(id=''){
+  cid.value=id;
+  customerTitle.textContent=id?'Edit Nasabah':'Nasabah Baru';
+  cinv.innerHTML=investors.map(i=>{
+    let cs=customers.filter(c=>c.investor_id===i.id);
+    let activePrincipal = cs.filter(c => !isCustomerLunas(c)).reduce((a,c)=>a+Number(c.principal),0);
+    if(id){
+      let currentC = customers.find(x=>x.id===id);
+      if(currentC && currentC.investor_id === i.id) {
+        activePrincipal -= Number(currentC.principal);
+      }
+    }
+    let available = Math.max(0, Number(i.initial_capital||0) - activePrincipal);
+    return `<option value="${i.id}">${esc(i.name)} (Sisa Modal: ${money(available)})</option>`;
+  }).join('');
+
+  if(id){
+    let c=customers.find(x=>x.id===id);
+    cinv.value=c.investor_id;
+    cname.value=c.name;
+    cphone.value=c.phone||'';
+    cprincipal.value=c.principal;
+    cmaxdays.value=c.max_days||5;
+    crateType.value=c.rate_type||'standard';
+    cdate.value=c.start_date;
+    csettled.value=c.settled_date||'';
+    cnote.value=c.notes||'';
+  }else{
+    cname.value='';
+    cphone.value='';
+    cprincipal.value='';
+    cmaxdays.value='5';
+    crateType.value='standard';
+    cdate.value=new Date().toISOString().slice(0,10);
+    csettled.value='';
+    cnote.value='';
+  }
+  customerModal.style.display='block';
+}
+
+function closeModal(id){document.getElementById(id).style.display='none'}
+
+async function saveCustomer(){
+  let id=cid.value;
+  let investorId = cinv.value;
+  let principalInput = Number(cprincipal.value);
+
+  let targetInvestor = investors.find(i => i.id === investorId);
+  if(targetInvestor){
+    let cs = customers.filter(c => c.investor_id === investorId);
+    let activePrincipal = cs.filter(c => !isCustomerLunas(c)).reduce((a,c) => a + Number(c.principal), 0);
+    if(id){
+      let currentC = customers.find(x => x.id === id);
+      if(currentC && currentC.investor_id === investorId){
+        activePrincipal -= Number(currentC.principal);
+      }
+    }
+    let availableCapital = Math.max(0, Number(targetInvestor.initial_capital || 0) - activePrincipal);
+    if(principalInput > availableCapital){
+      alert(`❌ Modal investor tidak mencukupi!\n\nInvestor ${targetInvestor.name} hanya memiliki sisa modal aktif sebesar ${money(availableCapital)}.`);
+      return;
+    }
+  }
+
+  let data={
+    investor_id: investorId,
+    name: cname.value.trim(),
+    phone: cphone.value.trim(),
+    principal: principalInput,
+    max_days: Number(cmaxdays.value) || 5,
+    rate_type: crateType.value,
+    start_date: cdate.value,
+    settled_date: csettled.value?csettled.value:null,
+    notes: cnote.value.trim()
+  };
+  let r=id?await sb.from('customers').update(data).eq('id',id):await sb.from('customers').insert(data);
+  if(r.error)alert(r.error.message);else{closeModal('customerModal');refresh()}
+}
+
+async function addPayment(id){
+  let c = customers.find(x=>x.id===id);
+  let x = calc(c);
+  let amount=prompt('Nominal pembayaran:', x.sisa);
+  if(!amount)return;
+  let today = new Date().toISOString().slice(0,10);
+  let r=await sb.from('payments').insert({customer_id:id,amount:Number(amount),payment_date:today});
+  if(r.error){alert(r.error.message);return;}
+
+  payments.push({customer_id: id, amount: Number(amount), payment_date: today});
+  let updatedX = calc(c);
+  
+  if(updatedX.sisa === 0 && !c.settled_date){
+    await sb.from('customers').update({settled_date: today}).eq('id', id);
+  }
+
+  refresh();
+}
+
+async function withdrawInvestor(investorId, maxWithdraw, availableCapital, currentTotalCapital, currentProfitInvestor){
+  let inv = investors.find(i => i.id === investorId);
+  if(!inv) return;
+  
+  let input = prompt(`Masukkan nominal penarikan (Withdraw) untuk ${inv.name}:\nMaksimal WD (Modal Sisa + Sisa Laba Investor): ${money(maxWithdraw)}`, maxWithdraw);
+  if(!input) return;
+  let amount = Number(input);
+  if(isNaN(amount) || amount <= 0){
+    alert('Nominal tidak valid.');
+    return;
+  }
+  if(amount > maxWithdraw){
+    alert(`Nominal penarikan melebihi batas maksimal (${money(maxWithdraw)}).`);
+    return;
+  }
+
+  let {data: wData, error: wError} = await sb.from('investor_withdrawals').insert({investor_id: investorId, amount: amount}).select().single();
+  if(wError){
+    alert('Gagal melakukan withdraw: ' + wError.message);
+    return;
+  }
+
+  if(wData) {
+    withdrawals.push(wData);
+  } else {
+    withdrawals.push({investor_id: investorId, amount: amount, created_at: new Date().toISOString()});
+  }
+
+  let excess = amount - currentProfitInvestor;
+  if(excess > 0){
+    let newTotalCapital = Math.max(0, currentTotalCapital - excess);
+    let {error: cError} = await sb.from('investors').update({initial_capital: newTotalCapital}).eq('id', investorId);
+    if(cError){
+      alert('Withdraw tercatat, tetapi gagal memperbarui modal investor: ' + cError.message);
+      refresh();
+      return;
+    }
+    let targetInv = investors.find(i => i.id === investorId);
+    if(targetInv) targetInv.initial_capital = newTotalCapital;
+    alert(`✅ Berhasil withdraw sebesar ${money(amount)}.\nKelebihan ${money(excess)} otomatis memotong Total Modal Investor (${money(currentTotalCapital)} ➔ ${money(newTotalCapital)}).`);
+  } else {
+    alert(`✅ Berhasil melakukan withdraw sebesar ${money(amount)} untuk ${inv.name}.`);
+  }
+
+  refresh();
+}
+
+function showHistory(investorId, investorName){
+  let invWithdraws = withdrawals.filter(w => w.investor_id === investorId);
+  historyTitle.textContent = `Riwayat Withdraw — ${investorName}`;
+  
+  let rows = '';
+  if(invWithdraws.length === 0){
+    rows = `<tr><td colspan="4" class="muted" style="text-align:center">Belum ada riwayat penarikan.</td></tr>`;
+  } else {
+    invWithdraws.forEach((w, idx) => {
+      let tgl = w.created_at ? new Date(w.created_at).toLocaleDateString('id-ID') : '-';
+      rows += `<tr>
+        <td>${idx + 1}</td>
+        <td>${tgl}</td>
+        <td><b>${money(w.amount)}</b></td>
+        <td>
+          <button class="btn gray" style="padding:4px 8px;font-size:11px" onclick="editWithdraw('${w.id}', ${w.amount})">Edit</button>
+          <button class="btn danger" style="padding:4px 8px;font-size:11px" onclick="deleteWithdraw('${w.id}')">Hapus</button>
+        </td>
+      </tr>`;
+    });
+  }
+  historyRows.innerHTML = rows;
+  document.getElementById('historyModal').style.display = 'block';
+}
+
+async function editWithdraw(id, oldAmount){
+  let input = prompt('Masukkan nominal WD yang baru:', oldAmount);
+  if(!input) return;
+  let newAmount = Number(input);
+  if(isNaN(newAmount) || newAmount <= 0){
+    alert('Nominal tidak valid.');
+    return;
+  }
+
+  let { error } = await sb.from('investor_withdrawals').update({ amount: newAmount }).eq('id', id);
+  if(error){
+    alert('Gagal mengedit riwayat WD: ' + error.message);
+    return;
+  }
+  alert('✅ Riwayat WD berhasil diperbarui.');
+  closeModal('historyModal');
+  refresh();
+}
+
+async function deleteWithdraw(id){
+  if(!confirm('Apakah Anda yakin ingin menghapus riwayat penarikan ini?')) return;
+  let { error } = await sb.from('investor_withdrawals').delete().eq('id', id);
+  if(error){
+    alert('Gagal menghapus riwayat WD: ' + error.message);
+    return;
+  }
+  alert('✅ Riwayat WD berhasil dihapus.');
+  closeModal('historyModal');
+  refresh();
+}
+
+function openInvestor(id=''){
+  iid.value=id;
+  investorTitleModal.textContent = id ? 'Edit Investor' : 'Tambah Investor';
+  let inv = id ? investors.find(x=>x.id===id) : null;
+  iname.value = inv ? inv.name : '';
+  iemail.value = inv ? inv.email : '';
+  ishare.value = inv ? inv.share_percent : '';
+  
+  let currentCap = inv ? Number(inv.initial_capital || 0) : 0;
+  
+  if(id){
+    document.getElementById('editCapitalSection').classList.remove('hidden');
+    document.getElementById('newCapitalSection').classList.add('hidden');
+    capitalInfoLabel.textContent = `Total Modal Saat Ini: ${money(currentCap)}`;
+    capitalAction.value = 'set';
+    icapitalEdit.value = '';
+  } else {
+    document.getElementById('editCapitalSection').classList.add('hidden');
+    document.getElementById('newCapitalSection').classList.remove('hidden');
+    icapitalNew.value = '';
+  }
+
+  ipassword.value='';
+  ipassword.type='text';
+  setTimeout(()=>ipassword.type='password', 50);
+  investorModal.style.display='block';
+}
+
+async function saveInvestor(){
+  let id = iid.value;
+  let finalCapital = 0;
+
+  if(id){
+    let existing = investors.find(x=>x.id === id);
+    let oldCap = existing ? Number(existing.initial_capital || 0) : 0;
+    let action = capitalAction.value;
+    let inputAmount = Number(icapitalEdit.value) || 0;
+
+    if(action === 'add'){
+      finalCapital = oldCap + inputAmount;
+    } else if(action === 'sub'){
+      finalCapital = Math.max(0, oldCap - inputAmount);
+    } else {
+      finalCapital = inputAmount;
+    }
+  } else {
+    finalCapital = Number(icapitalNew.value) || 0;
+  }
+
+  let data = {
+    name: iname.value.trim(),
+    email: iemail.value.trim(),
+    initial_capital: finalCapital,
+    share_percent: Number(ishare.value)
+  };
+
+  let isNew = !id;
+  let r = isNew?await sb.from('investors').insert(data).select().single():await sb.from('investors').update(data).eq('id', id).select().single();
+  if(r.error){
+    if(r.error.code === '23505' || r.error.message.includes('unique constraint') || r.error.message.includes('duplicate key')){
+      alert('❌ Gagal menyimpan investor: Nama investor "' + data.name + '" sudah terdaftar di sistem. Gunakan nama lain.');
+    } else {
+      alert('Gagal menyimpan investor: ' + r.error.message);
+    }
+    return;
+  }
+
+  let investorId = isNew ? r.data.id : id;
+  const password = ipassword.value.trim();
+  if(password){
+    if(password.length < 8){alert('Password minimal 8 karakter');return;}
+    const { error: fnError } = await sb.functions.invoke('set-investor-password', { body: { investor_id: investorId, password: password } });
+    if(fnError){alert('Gagal mengatur password: ' + fnError.message);return;}
+  }
+  closeModal('investorModal');
+  refresh();
+}
+
+async function deleteInvestor(id){
+  const investor=investors.find(i=>i.id===id);
+  if(!investor)return;
+  if(!confirm('Hapus investor "'+investor.name+'"?'))return;
+  const {error}=await sb.from('investors').delete().eq('id',id);
+  if(error){alert('Gagal menghapus investor: '+error.message);return;}
+  refresh();
+}
+
+async function refresh(){await loadData()}
+
+sb.auth.onAuthStateChange((event, session) => {
+  if (event === 'SIGNED_IN' && session) {
+    loadData();
+  } else if (event === 'SIGNED_OUT') {
+    document.getElementById('app').classList.add('hidden');
+    document.getElementById('loginView').classList.remove('hidden');
+  }
+});
+
+sb.channel('dapin-live')
+  .on('postgres_changes',{event:'*',schema:'public',table:'customers'},()=>loadData())
+  .on('postgres_changes',{event:'*',schema:'public',table:'payments'},()=>loadData())
+  .on('postgres_changes',{event:'*',schema:'public',table:'investors'},()=>loadData())
+  .on('postgres_changes',{event:'*',schema:'public',table:'investor_withdrawals'},()=>loadData())
+  .subscribe();
+
+// Inisialisasi awal saat halaman dibuka
+loadData();
+</script></body></html>
