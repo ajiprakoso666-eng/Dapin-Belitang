@@ -275,7 +275,7 @@ function renderTableRows(listToRender, isLunasTable){
           let x = calc(c);
           if(!isCustomerLunas(c)){
             let statusMax = x.days > Number(c.max_days||5) ? ' (⚠️ Melebihi Batas Max Hari)' : '';
-            msg += `\n📌 *Pinjaman #${idx+1}*\n- Mulai:${dateFmt(c.start_date)} (${x.days} Hari${statusMax})\n- Pokok: ${money(c.principal)}\n- Denda:${money(x.pen)}\n- Dibayar: ${money(x.paid)}\n- Sisa: *${money(x.sisa)}*\n`;
+            msg += `\n📌 *Pinjaman #${idx+1}*\n- Mulai: ${dateFmt(c.start_date)} (${x.days} Hari${statusMax})\n- Pokok: ${money(c.principal)}\n- Denda: ${money(x.pen)}\n- Dibayar: ${money(x.paid)}\n- Sisa: *${money(x.sisa)}*\n`;
           }
         });
         msg += `\n💰 *TOTAL KESELURUHAN YANG HARUS DIBAYAR: ${money(totalGroupSisa)}*\n\n💳 Pembayaran dapat dikirim melalui No. Rekening *SEABANK 901734889540* a.n. *NUR AJI PRAKOSO*.\n\nMohon segera melakukan pelunasan dan konfirmasi setelah transfer. Terima kasih!`;
@@ -284,7 +284,7 @@ function renderTableRows(listToRender, isLunasTable){
         groupWaBtn = `<a href="${waUrl}" target="_blank" class="wa" style="margin-left:10px;padding:3px 8px;font-size:11px">💬 Kirim WA Rekap Rinci</a>`;
       }
 
-      rowsHtml += `<tr style="background:#e2e8f0;font-weight:bold"><td colspan="11">👤 Nasabah: ${esc(sample.name)} <span style="font-weight:normal;color:#475569">(${sample.phone\vert{}\vert{}'No HP -'})</span>${groupWaBtn}</td></tr>`;
+      rowsHtml += `<tr style="background:#e2e8f0;font-weight:bold"><td colspan="11">👤 Nasabah: ${esc(sample.name)} <span style="font-weight:normal;color:#475569">(${sample.phone||'No HP -'})</span> ${groupWaBtn}</td></tr>`;
 
       groupList.forEach(c => {
         rowsHtml += generateCustomerRow(c, false);
@@ -310,7 +310,7 @@ function generateCustomerRow(c, showCustomerNameDirectly){
     if(showCustomerNameDirectly) {
       nameColumnContent = `<b>${esc(c.name)}</b>${rateBadge}<br><small style="color:#64748b">ID: ${c.id.slice(0,6)}</small>`;
     } else {
-      nameColumnContent = `<small style="padding-left:15px">Pinjaman ID: ${c.id.slice(0,6)}${c.rate_type==='special'?'(Khusus)':''}</small>`;
+      nameColumnContent = `<small style="padding-left:15px">Pinjaman ID: ${c.id.slice(0,6)} ${c.rate_type==='special'?'(Khusus)':''}</small>`;
     }
   } else {
     nameColumnContent = `<span style="font-weight:600;color:#334155">Nasabah #${c.id.slice(0,6)}</span><br><small style="color:#94a3b8">(No. HP disembunyikan)</small>`;
@@ -323,4 +323,36 @@ function generateCustomerRow(c, showCustomerNameDirectly){
       let cleanPhone = c.phone.replace(/\D/g,'');
       if(cleanPhone.startsWith('0')) cleanPhone = '62' + cleanPhone.slice(1);
       
-      let msg = `Halo Bapak/Ibu *${c.name}*,\n\nIni adalah pengingat otomatis dari *Dapin Belitang* bahwa pinjaman Anda telah berjalan selama *${x.days} hari* dan status saat ini *BELUM LUNAS*.\n\n📋 *Rincian Tagihan:*\n- Tanggal Mulai: ${dateFmt(c.start_date)}\n- Pokok Pinjaman:${money(c.principal)}\n- Denda Berjalan: ${money(x.pen)}\n- Total Sudah Dibayar:${money(x
+      let msg = `Halo Bapak/Ibu *${c.name}*,\n\nIni adalah pengingat otomatis dari *Dapin Belitang* bahwa pinjaman Anda telah berjalan selama *${x.days} hari* dan status saat ini *BELUM LUNAS*.\n\n📋 *Rincian Tagihan:*\n- Tanggal Mulai: ${dateFmt(c.start_date)}\n- Pokok Pinjaman: ${money(c.principal)}\n- Denda Berjalan: ${money(x.pen)}\n- Total Sudah Dibayar: ${money(x.paid)}\n📌 *Sisa Hutang Saat Ini: ${money(x.sisa)}*\n\n💳 Pembayaran dapat dikirim melalui No. Rekening *SEABANK 901734889540* a.n. *NUR AJI PRAKOSO*.\n\nMohon segera melakukan pelunasan. Terima kasih!`;
+      
+      let waUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}`;
+      waButton = `<a href="${waUrl}" target="_blank" class="wa" style="margin-top:4px">💬 Kirim WA</a>`;
+    }
+  }
+
+  return `<tr>
+   <td>${nameColumnContent}</td>
+   <td>${esc(inv?.name||'-')}</td>
+   <td>${dateFmt(c.start_date)}</td>
+   <td>${money(c.principal)}</td>
+   <td>${x.days} <small>(${c.max_days||5}hr)</small></td>
+   <td>${money(x.pen)}</td>
+   <td>${money(x.paid)}</td>
+   <td><b>${money(x.sisa)}</b></td>
+   <td>${settledDisplay}</td>
+   <td><span class="badge ${lunas?'ok':'warn'}">${lunas?'LUNAS':'BELUM LUNAS'}</span></td>
+   <td class="${profile.role==='admin'?'':'hidden'}">
+    <button class="btn gray" onclick="openCustomer('${c.id}')">Edit</button> 
+    <button class="btn primary" onclick="addPayment('${c.id}')">Bayar</button>
+    ${waButton}
+   </td>
+  </tr>`;
+}
+
+function render(){
+ const q=(search.value||'').toLowerCase();
+ const sortVal = document.getElementById('sortBy').value;
+ 
+ let list = customers;
+ if(profile.role !== 'admin' && profile.investor_id){
+   list = list
