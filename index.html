@@ -638,4 +638,100 @@ function openInvestor(id=''){
   let currentCap = inv ? Number(inv.initial_capital || 0) : 0;
   
   if(id){
-    document.getElementById('edit
+    document.getElementById('editCapitalSection').classList.remove('hidden');
+    document.getElementById('newCapitalSection').classList.add('hidden');
+    capitalInfoLabel.textContent = `Total Modal Saat Ini: ${money(currentCap)}`;
+    capitalAction.value = 'set';
+    icapitalEdit.value = '';
+  } else {
+    document.getElementById('editCapitalSection').classList.add('hidden');
+    document.getElementById('newCapitalSection').classList.remove('hidden');
+    icapitalNew.value = '';
+  }
+
+  ipassword.value='';
+  ipassword.type='text';
+  setTimeout(()=>ipassword.type='password', 50);
+  investorModal.style.display='block';
+}
+
+async function saveInvestor(){
+  let id = iid.value;
+  let finalCapital = 0;
+
+  if(id){
+    let existing = investors.find(x=>x.id === id);
+    let oldCap = existing ? Number(existing.initial_capital || 0) : 0;
+    let action = capitalAction.value;
+    let inputAmount = Number(icapitalEdit.value) || 0;
+
+    if(action === 'add'){
+      finalCapital = oldCap + inputAmount;
+    } else if(action === 'sub'){
+      finalCapital = Math.max(0, oldCap - inputAmount);
+    } else {
+      finalCapital = inputAmount;
+    }
+  } else {
+    finalCapital = Number(icapitalNew.value) || 0;
+  }
+
+  let data = {
+    name: iname.value.trim(),
+    email: iemail.value.trim(),
+    initial_capital: finalCapital,
+    share_percent: Number(ishare.value)
+  };
+
+  let isNew = !id;
+  let r = isNew?await sb.from('investors').insert(data).select().single():await sb.from('investors').update(data).eq('id', id).select().single();
+  if(r.error){
+    if(r.error.code === '23505' || r.error.message.includes('unique constraint') || r.error.message.includes('duplicate key')){
+      alert('❌ Gagal menyimpan investor: Nama investor "' + data.name + '" sudah terdaftar di sistem. Gunakan nama lain.');
+    } else {
+      alert('Gagal menyimpan investor: ' + r.error.message);
+    }
+    return;
+  }
+
+  let investorId = isNew ? r.data.id : id;
+  const password = ipassword.value.trim();
+  if(password){
+    if(password.length < 8){alert('Password minimal 8 karakter');return;}
+    const { error: fnError } = await sb.functions.invoke('set-investor-password', { body: { investor_id: investorId, password: password } });
+    if(fnError){alert('Gagal mengatur password: ' + fnError.message);return;}
+  }
+  closeModal('investorModal');
+  refresh();
+}
+
+async function deleteInvestor(id){
+  const investor=investors.find(i=>i.id===id);
+  if(!investor)return;
+  if(!confirm('Hapus investor "'+investor.name+'"?'))return;
+  const {error}=await sb.from('investors').delete().eq('id',id);
+  if(error){alert('Gagal menghapus investor: '+error.message);return;}
+  refresh();
+}
+
+async function refresh(){await loadData()}
+
+sb.auth.onAuthStateChange((event, session) => {
+  if (event === 'SIGNED_IN' && session) {
+    loadData();
+  } else if (event === 'SIGNED_OUT') {
+    document.getElementById('app').classList.add('hidden');
+    document.getElementById('loginView').classList.remove('hidden');
+  }
+});
+
+sb.channel('dapin-live')
+  .on('postgres_changes',{event:'*',schema:'public',table:'customers'},()=>loadData())
+  .on('postgres_changes',{event:'*',schema:'public',table:'payments'},()=>loadData())
+  .on('postgres_changes',{event:'*',schema:'public',table:'investors'},()=>loadData())
+  .on('postgres_changes',{event:'*',schema:'public',table:'investor_withdrawals'},()=>loadData())
+  .subscribe();
+
+// Inisialisasi awal saat halaman dibuka
+loadData();
+</script></body></html>
