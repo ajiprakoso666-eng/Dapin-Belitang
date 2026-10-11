@@ -55,6 +55,7 @@
       <div class="field"><label>Pokok Pinjaman</label><input id="cprincipal" type="number"></div>
       <div class="field"><label>Batas Max Hari (Tenor)</label><input id="cmaxdays" type="number" placeholder="Contoh: 5"></div>
       <div class="field"><label>Tanggal Mulai</label><input id="cdate" type="date"></div>
+      <div class="field"><label>Kategori Bunga / Tarif</label><select id="crateType"><option value="reguler">Reguler (10% &amp; 20% / Hari)</option><option value="khusus">Khusus (15% &amp; 30% / Hari)</option></select></div>
       <div class="field full"><label>Tanggal Pelunasan (Menentukan Total Denda)</label><input id="csettled" type="date"></div>
       <div class="field full"><label>Catatan</label><input id="cnote"></div>
     </div>
@@ -144,10 +145,16 @@ function penalty(c){
   let d = getDays(c);
   let maxD = Number(c.max_days || 5);
   let principal = Number(c.principal);
+  let isKhusus = c.rate_type === 'khusus';
   
   let totalPenalty = 0;
   for (let i = 1; i <= d; i++) {
-    let rate = i > maxD ? 0.20 : 0.10;
+    let rate = 0;
+    if(isKhusus) {
+      rate = i > maxD ? 0.30 : 0.15;
+    } else {
+      rate = i > maxD ? 0.20 : 0.10;
+    }
     totalPenalty += principal * rate;
   }
   return totalPenalty;
@@ -219,7 +226,7 @@ function renderTableRows(listToRender, isLunasTable){
         groupList.forEach((c, idx) => {
           let x = calc(c);
           if(!isCustomerLunas(c)){
-            let statusMax = x.days > Number(c.max_days||5) ? ' (⚠️ Melebihi Max Hari / Bunga 20%)' : '';
+            let statusMax = x.days > Number(c.max_days||5) ? ' (⚠️ Melebihi Max Hari)' : '';
             msg += `\n📌 *Pinjaman #${idx+1}*\n- Mulai: ${dateFmt(c.start_date)} (${x.days} Hari${statusMax})\n- Pokok: ${money(c.principal)}\n- Denda: ${money(x.pen)}\n- Dibayar: ${money(x.paid)}\n- Sisa: *${money(x.sisa)}*\n`;
           }
         });
@@ -248,16 +255,17 @@ function generateCustomerRow(c, showCustomerNameDirectly){
   let lunas = isCustomerLunas(c);
   let settledDisplay = c.settled_date ? dateFmt(c.settled_date) : (lunas ? '<span class="muted" style="font-size:11px">Belum diset</span>' : '-');
   let dayStyle = x.days > Number(c.max_days||5) ? 'color:#dc2626;font-weight:bold;' : '';
+  let badgeKhusus = c.rate_type === 'khusus' ? ' <span class="badge" style="background:#fef3c7;color:#d97706;font-size:10px">Khusus 15%/30%</span>' : '';
 
   let nameColumnContent = '';
   if(profile.role === 'admin') {
     if(showCustomerNameDirectly) {
-      nameColumnContent = `<b>${esc(c.name)}</b><br><small style="color:#64748b">ID: ${c.id.slice(0,6)}</small>`;
+      nameColumnContent = `<b>${esc(c.name)}</b>${badgeKhusus}<br><small style="color:#64748b">ID: ${c.id.slice(0,6)}</small>`;
     } else {
-      nameColumnContent = `<small style="padding-left:15px">Pinjaman ID: ${c.id.slice(0,6)}</small>`;
+      nameColumnContent = `<small style="padding-left:15px">Pinjaman ID: ${c.id.slice(0,6)}</small>${badgeKhusus}`;
     }
   } else {
-    nameColumnContent = `<span style="font-weight:600;color:#334155">Nasabah #${c.id.slice(0,6)}</span><br><small style="color:#94a3b8">(No. HP disembunyikan)</small>`;
+    nameColumnContent = `<span style="font-weight:600;color:#334155">Nasabah #${c.id.slice(0,6)}</span>${badgeKhusus}<br><small style="color:#94a3b8">(No. HP disembunyikan)</small>`;
   }
 
   let waButton = '';
@@ -267,7 +275,7 @@ function generateCustomerRow(c, showCustomerNameDirectly){
       let cleanPhone = c.phone.replace(/\D/g,'');
       if(cleanPhone.startsWith('0')) cleanPhone = '62' + cleanPhone.slice(1);
       
-      let statusMaxText = x.days > Number(c.max_days||5) ? ' (⚠️ Melebihi Batas Max Hari / Bunga 20%)' : '';
+      let statusMaxText = x.days > Number(c.max_days||5) ? ' (⚠️ Melebihi Batas Max Hari)' : '';
       let msg = `Halo Bapak/Ibu *${c.name}*,\n\nIni adalah pengingat otomatis dari *Dapin Belitang* bahwa pinjaman Anda telah berjalan selama *${x.days} hari*${statusMaxText} dan status saat ini *BELUM LUNAS*.\n\n📋 *Rincian Tagihan:*\n- Tanggal Mulai: ${dateFmt(c.start_date)}\n- Batas Max Hari: ${c.max_days||5} Hari\n- Pokok Pinjaman: ${money(c.principal)}\n- Denda Berjalan: ${money(x.pen)}\n- Total Sudah Dibayar: ${money(x.paid)}\n📌 *Sisa Hutang Saat Ini: ${money(x.sisa)}*\n\n💳 Pembayaran dapat dikirim melalui No. Rekening *SEABANK 901734889540* a.n. *NUR AJI PRAKOSO*.\n\nMohon segera melakukan pelunasan. Terima kasih!`;
       
       let waUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}`;
@@ -411,6 +419,7 @@ function openCustomer(id=''){
     cprincipal.value=c.principal;
     cmaxdays.value=c.max_days||5;
     cdate.value=c.start_date;
+    crateType.value=c.rate_type||'reguler';
     csettled.value=c.settled_date||'';
     cnote.value=c.notes||'';
   }else{
@@ -419,6 +428,7 @@ function openCustomer(id=''){
     cprincipal.value='';
     cmaxdays.value='5';
     cdate.value=new Date().toISOString().slice(0,10);
+    crateType.value='reguler';
     csettled.value='';
     cnote.value='';
   }
@@ -440,245 +450,3 @@ async function saveCustomer(){
       let currentC = customers.find(x => x.id === id);
       if(currentC && currentC.investor_id === investorId){
         activePrincipal -= Number(currentC.principal);
-      }
-    }
-    let availableCapital = Math.max(0, Number(targetInvestor.initial_capital || 0) - activePrincipal);
-    if(principalInput > availableCapital){
-      alert(`❌ Modal investor tidak mencukupi!\n\nInvestor ${targetInvestor.name} hanya memiliki sisa modal aktif sebesar ${money(availableCapital)}.`);
-      return;
-    }
-  }
-
-  let data={
-    investor_id: investorId,
-    name: cname.value.trim(),
-    phone: cphone.value.trim(),
-    principal: principalInput,
-    max_days: Number(cmaxdays.value) || 5,
-    start_date: cdate.value,
-    settled_date: csettled.value?csettled.value:null,
-    notes: cnote.value.trim()
-  };
-  let r=id?await sb.from('customers').update(data).eq('id',id):await sb.from('customers').insert(data);
-  if(r.error)alert(r.error.message);else{closeModal('customerModal');refresh()}
-}
-
-async function addPayment(id){
-  let c = customers.find(x=>x.id===id);
-  let x = calc(c);
-  let amount=prompt('Nominal pembayaran:', x.sisa);
-  if(!amount)return;
-  let today = new Date().toISOString().slice(0,10);
-  let r=await sb.from('payments').insert({customer_id:id,amount:Number(amount),payment_date:today});
-  if(r.error){alert(r.error.message);return;}
-
-  payments.push({customer_id: id, amount: Number(amount), payment_date: today});
-  let updatedX = calc(c);
-  
-  if(updatedX.sisa === 0 && !c.settled_date){
-    await sb.from('customers').update({settled_date: today}).eq('id', id);
-  }
-
-  refresh();
-}
-
-async function withdrawInvestor(investorId, maxWithdraw, availableCapital, currentTotalCapital, currentProfitInvestor){
-  let inv = investors.find(i => i.id === investorId);
-  if(!inv) return;
-  
-  let input = prompt(`Masukkan nominal penarikan (Withdraw) untuk ${inv.name}:\nMaksimal WD (Modal Sisa + Sisa Laba Investor): ${money(maxWithdraw)}`, maxWithdraw);
-  if(!input) return;
-  let amount = Number(input);
-  if(isNaN(amount) || amount <= 0){
-    alert('Nominal tidak valid.');
-    return;
-  }
-  if(amount > maxWithdraw){
-    alert(`Nominal penarikan melebihi batas maksimal (${money(maxWithdraw)}).`);
-    return;
-  }
-
-  let {data: wData, error: wError} = await sb.from('investor_withdrawals').insert({investor_id: investorId, amount: amount}).select().single();
-  if(wError){
-    alert('Gagal melakukan withdraw: ' + wError.message);
-    return;
-  }
-
-  if(wData) {
-    withdrawals.push(wData);
-  } else {
-    withdrawals.push({investor_id: investorId, amount: amount, created_at: new Date().toISOString()});
-  }
-
-  let excess = amount - currentProfitInvestor;
-  if(excess > 0){
-    let newTotalCapital = Math.max(0, currentTotalCapital - excess);
-    let {error: cError} = await sb.from('investors').update({initial_capital: newTotalCapital}).eq('id', investorId);
-    if(cError){
-      alert('Withdraw tercatat, tetapi gagal memperbarui modal investor: ' + cError.message);
-      refresh();
-      return;
-    }
-    let targetInv = investors.find(i => i.id === investorId);
-    if(targetInv) targetInv.initial_capital = newTotalCapital;
-    alert(`✅ Berhasil withdraw sebesar ${money(amount)}.\nKelebihan ${money(excess)} otomatis memotong Total Modal Investor (${money(currentTotalCapital)} ➔ ${money(newTotalCapital)}).`);
-  } else {
-    alert(`✅ Berhasil melakukan withdraw sebesar ${money(amount)} untuk ${inv.name}.`);
-  }
-
-  refresh();
-}
-
-function showHistory(investorId, investorName){
-  let invWithdraws = withdrawals.filter(w => w.investor_id === investorId);
-  historyTitle.textContent = `Riwayat Withdraw — ${investorName}`;
-  
-  let rows = '';
-  if(invWithdraws.length === 0){
-    rows = `<tr><td colspan="4" class="muted" style="text-align:center">Belum ada riwayat penarikan.</td></tr>`;
-  } else {
-    invWithdraws.forEach((w, idx) => {
-      let tgl = w.created_at ? new Date(w.created_at).toLocaleDateString('id-ID') : '-';
-      rows += `<tr>
-        <td>${idx + 1}</td>
-        <td>${tgl}</td>
-        <td><b>${money(w.amount)}</b></td>
-        <td>
-          <button class="btn gray" style="padding:4px 8px;font-size:11px" onclick="editWithdraw('${w.id}', ${w.amount})">Edit</button>
-          <button class="btn danger" style="padding:4px 8px;font-size:11px" onclick="deleteWithdraw('${w.id}')">Hapus</button>
-        </td>
-      </tr>`;
-    });
-  }
-  historyRows.innerHTML = rows;
-  document.getElementById('historyModal').style.display = 'block';
-}
-
-async function editWithdraw(id, oldAmount){
-  let input = prompt('Masukkan nominal WD yang baru:', oldAmount);
-  if(!input) return;
-  let newAmount = Number(input);
-  if(isNaN(newAmount) || newAmount <= 0){
-    alert('Nominal tidak valid.');
-    return;
-  }
-
-  let { error } = await sb.from('investor_withdrawals').update({ amount: newAmount }).eq('id', id);
-  if(error){
-    alert('Gagal mengedit riwayat WD: ' + error.message);
-    return;
-  }
-  alert('✅ Riwayat WD berhasil diperbarui.');
-  closeModal('historyModal');
-  refresh();
-}
-
-async function deleteWithdraw(id){
-  if(!confirm('Apakah Anda yakin ingin menghapus riwayat penarikan ini?')) return;
-  let { error } = await sb.from('investor_withdrawals').delete().eq('id', id);
-  if(error){
-    alert('Gagal menghapus riwayat WD: ' + error.message);
-    return;
-  }
-  alert('✅ Riwayat WD berhasil dihapus.');
-  closeModal('historyModal');
-  refresh();
-}
-
-function openInvestor(id=''){
-  iid.value=id;
-  investorTitleModal.textContent = id ? 'Edit Investor' : 'Tambah Investor';
-  let inv = id ? investors.find(x=>x.id===id) : null;
-  iname.value = inv ? inv.name : '';
-  iemail.value = inv ? inv.email : '';
-  ishare.value = inv ? inv.share_percent : '';
-  
-  let currentCap = inv ? Number(inv.initial_capital || 0) : 0;
-  
-  if(id){
-    document.getElementById('editCapitalSection').classList.remove('hidden');
-    document.getElementById('newCapitalSection').classList.add('hidden');
-    capitalInfoLabel.textContent = `Total Modal Saat Ini: ${money(currentCap)}`;
-    capitalAction.value = 'set';
-    icapitalEdit.value = '';
-  } else {
-    document.getElementById('editCapitalSection').classList.add('hidden');
-    document.getElementById('newCapitalSection').classList.remove('hidden');
-    icapitalNew.value = '';
-  }
-
-  ipassword.value='';
-  ipassword.type='text';
-  setTimeout(()=>ipassword.type='password', 50);
-  investorModal.style.display='block';
-}
-
-async function saveInvestor(){
-  let id = iid.value;
-  let finalCapital = 0;
-
-  if(id){
-    let existing = investors.find(x=>x.id === id);
-    let oldCap = existing ? Number(existing.initial_capital || 0) : 0;
-    let action = capitalAction.value;
-    let inputAmount = Number(icapitalEdit.value) || 0;
-
-    if(action === 'add'){
-      finalCapital = oldCap + inputAmount;
-    } else if(action === 'sub'){
-      finalCapital = Math.max(0, oldCap - inputAmount);
-    } else {
-      finalCapital = inputAmount;
-    }
-  } else {
-    finalCapital = Number(icapitalNew.value) || 0;
-  }
-
-  let data = {
-    name: iname.value.trim(),
-    email: iemail.value.trim(),
-    initial_capital: finalCapital,
-    share_percent: Number(ishare.value)
-  };
-
-  let isNew = !id;
-  let r = isNew?await sb.from('investors').insert(data).select().single():await sb.from('investors').update(data).eq('id', id).select().single();
-  if(r.error){
-    if(r.error.code === '23505' || r.error.message.includes('unique constraint') || r.error.message.includes('duplicate key')){
-      alert('❌ Gagal menyimpan investor: Nama investor "' + data.name + '" sudah terdaftar di sistem. Gunakan nama lain.');
-    } else {
-      alert('Gagal menyimpan investor: ' + r.error.message);
-    }
-    return;
-  }
-
-  let investorId = isNew ? r.data.id : id;
-  const password = ipassword.value.trim();
-  if(password){
-    if(password.length < 8){alert('Password minimal 8 karakter');return;}
-    const { error: fnError } = await sb.functions.invoke('set-investor-password', { body: { investor_id: investorId, password: password } });
-    if(fnError){alert('Gagal mengatur password: ' + fnError.message);return;}
-  }
-  closeModal('investorModal');
-  refresh();
-}
-
-async function deleteInvestor(id){
-  const investor=investors.find(i=>i.id===id);
-  if(!investor)return;
-  if(!confirm('Hapus investor "'+investor.name+'"?'))return;
-  const {error}=await sb.from('investors').delete().eq('id',id);
-  if(error){alert('Gagal menghapus investor: '+error.message);return;}
-  refresh();
-}
-
-async function refresh(){await load()}
-sb.auth.onAuthStateChange((_e,session)=>{if(session)load();else{app.classList.add('hidden');loginView.classList.remove('hidden')}});
-sb.channel('dapin-live')
-  .on('postgres_changes',{event:'*',schema:'public',table:'customers'},()=>load())
-  .on('postgres_changes',{event:'*',schema:'public',table:'payments'},()=>load())
-  .on('postgres_changes',{event:'*',schema:'public',table:'investors'},()=>load())
-  .on('postgres_changes',{event:'*',schema:'public',table:'investor_withdrawals'},()=>load())
-  .subscribe();
-(async()=>{const {data}=await sb.auth.getSession();if(data.session)load()})();
-</script></body></html>
