@@ -172,18 +172,26 @@ function syncPhoneByName(){
 
 async function login(){
   const {error}=await sb.auth.signInWithPassword({email:email.value,password:password.value});
-  loginMsg.textContent=error?error.message:'';
+  if(error){
+    loginMsg.textContent=error.message;
+  } else {
+    loginMsg.textContent='';
+    load();
+  }
 }
 
 async function logout(){
   await sb.auth.signOut();
+  app.classList.add('hidden');
+  loginView.classList.remove('hidden');
 }
 
 async function load(){
- const {data:userObj, error:userErr} = await sb.auth.getUser();
- if(userErr || !userObj.user) return;
-
- const {data:p,error:pe}=await sb.from('profiles').select('*,investors(*)').eq('id', userObj.user.id).single();
+ const {data: sessionData} = await sb.auth.getSession();
+ if(!sessionData.session) return;
+ 
+ const user = sessionData.session.user;
+ const {data:p,error:pe}=await sb.from('profiles').select('*,investors(*)').eq('id', user.id).single();
  if(pe){alert(pe.message);return}
  profile=p;
 
@@ -344,69 +352,4 @@ function render(){
   if(isCustomerLunas(c)){
     realProfit += estProfit;
   } else {
-    pendingProfit += estProfit;
-  }
- });
- realProfitCard.textContent = money(realProfit);
- pendingProfitCard.textContent = money(pendingProfit);
-
- let activeList = list.filter(c => !isCustomerLunas(c));
- let lunasList = list.filter(c => isCustomerLunas(c));
-
- rows.innerHTML = renderTableRows(activeList, false);
- lunasRows.innerHTML = renderTableRows(lunasList, true);
-
- investorRows.innerHTML=investors.filter(i=>profile.role==='admin'||i.id===profile.investor_id).map(i=>{
-  let cs=customers.filter(c=>c.investor_id===i.id);
-  let activePrincipal = cs.filter(c => !isCustomerLunas(c)).reduce((a,c)=>a+Number(c.principal),0);
-  let totalCapital = Number(i.initial_capital || 0);
-  let availableCapital = Math.max(0, totalCapital - activePrincipal);
-
-  let rawSettledProfitInvestor = 0;
-  let settledProfitDapinNet = 0;
-
-  cs.forEach(c => {
-    let x = calc(c);
-    let est = Math.max(0, x.total - Number(c.principal));
-    if(isCustomerLunas(c)){
-      let realCProfit = est;
-      let sharePct = Number(i.share_percent) / 100;
-      let investorPart = realCProfit * sharePct;
-      let dapinNetPart = realCProfit * (1 - sharePct);
-      
-      rawSettledProfitInvestor += investorPart;
-      settledProfitDapinNet += dapinNetPart;
-    }
-  });
-
-  let totalWithdrawn = withdrawals.filter(w=>w.investor_id===i.id).reduce((sum,w)=>sum+Number(w.amount),0);
-  let currentProfitInvestor = Math.max(0, rawSettledProfitInvestor - totalWithdrawn);
-  let maxWithdraw = availableCapital + currentProfitInvestor;
-  
-  let dapinCellHtml = profile.role === 'admin' 
-    ? `<td><span style="color:#2563eb;font-weight:700">${money(settledProfitDapinNet)}</span> (${100 - Number(i.share_percent)}% / sisa)</td>` 
-    : `<td class="hidden"></td>`;
-
-  return `<tr>
-    <td><b>${esc(i.name)}</b></td>
-    <td>${money(totalCapital)}</td>
-    <td><span style="color:#d97706;font-weight:700">${money(activePrincipal)}</span></td>
-    <td><span style="color:#16a34a;font-weight:700">${money(availableCapital)}</span></td>
-    <td><b>${money(currentProfitInvestor)}</b></td>
-    ${dapinCellHtml}
-    <td>${profile.role==='admin'?`
-      <button class="btn success" onclick="withdrawInvestor('${i.id}', ${maxWithdraw},${availableCapital}, ${totalCapital},${currentProfitInvestor})" style="margin-right:3px;padding:6px 10px;font-size:12px">Withdraw</button>
-      <button class="btn primary" onclick="showHistory('${i.id}', '${esc(i.name)}')" style="margin-right:3px;padding:6px 10px;font-size:12px">Riwayat WD</button>
-      <button class="btn gray" onclick="openInvestor('${i.id}')" style="margin-right:3px;padding:6px 10px;font-size:12px">Edit</button>
-      <button class="btn danger" onclick="deleteInvestor('${i.id}')" style="padding:6px 10px;font-size:12px">Hapus</button>`:''}</td>
-  </tr>`
- }).join('');
-}
-function esc(s){return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'} [m]))}
-
-function openCustomer(id=''){
-  cid.value=id;
-  customerTitle.textContent=id?'Edit Nasabah':'Nasabah Baru';
-  cinv.innerHTML=investors.map(i=>{
-    let cs=customers.filter(c=>c.investor_id===i.id);
-    let activePrincipal = cs.filter(c => !isCustomerLunas(c)).
+    pendingProfit +=
