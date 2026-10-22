@@ -67,7 +67,7 @@
       <div class="field"><label>Tipe Bunga / Skema</label>
         <select id="crateType">
           <option value="standard">Standar (10% &amp; 20% > Max Hari)</option>
-          <option value="special">Khusus (15% Hari 1-5, 30% Hari 6 dst)</option>
+          <option value="special">Khusus (15% &amp; 30% > Max Hari)</option>
         </select>
       </div>
       <div class="field"><label>Tanggal Mulai</label><input id="cdate" type="date"></div>
@@ -159,16 +159,17 @@ function penalty(c){
   let d = getDays(c);
   let principal = Number(c.principal);
   let totalPenalty = 0;
+  let maxD = Number(c.max_days || 5);
 
   if(c.rate_type === 'special'){
+    // Skema Khusus: Tarif normal 15% sampai max_days (default 5), tarif 30% (2x lipat) setelah melebihi max_days
     for (let i = 1; i <= d; i++) {
-      let rate = i <= 5 ? 0.15 : 0.30;
+      let rate = i > maxD ? 0.30 : 0.15;
       totalPenalty += principal * rate;
     }
   } else {
-    let maxD = Number(c.max_days || 5);
+    // Skema Standar: Tarif normal 10% sampai max_days, tarif 20% (2x lipat) setelah melebihi max_days
     for (let i = 1; i <= d; i++) {
-      // Kadar 2x ganda (20%) hanya bermula APABILA melebihi max_days (contoh max 5 hari, hari ke-6 baru 20%)
       let rate = i > maxD ? 0.20 : 0.10;
       totalPenalty += principal * rate;
     }
@@ -331,10 +332,10 @@ function generateCustomerRow(c, showCustomerNameDirectly){
   let lunas = isCustomerLunas(c);
   let settledDisplay = c.settled_date ? dateFmt(c.settled_date) : (lunas ? '<span class="muted" style="font-size:11px">Belum diset</span>' : '-');
   
-  // Menentukan had maksimum hari untuk warna merah (Skema khas 5 hari, skema standard ikut max_days)
-  let maxD = c.rate_type === 'special' ? 5 : Number(c.max_days || 5);
+  // Menggunakan max_days pinjaman sebagai patokan batas max hari untuk semua skema
+  let maxD = Number(c.max_days || 5);
   let isOverMax = x.days > maxD;
-  // Warna font merah tebal HANYA muncul jika sudah melebihi batas max hari
+  // Warna font merah tebal HANYA aktif jika hari berjalan melebihi batas max hari
   let dayStyle = isOverMax ? 'color:#dc2626;font-weight:bold;' : '';
 
   let rateBadge = c.rate_type === 'special' ? '<br><small style="color:#d97706;font-weight:bold">⚡ Khusus (15%/30%)</small>' : '';
