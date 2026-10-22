@@ -5,7 +5,7 @@
 <title>Dapin Belitang — Investor</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
-*{box-sizing:border-box}body{margin:0;font-family:Inter,Arial,sans-serif;background:#f3f6f9;color:#17202a}.wrap{max-width:1200px;margin:auto;padding:18px}.top{background:#111827;color:#fff;border-radius:18px;padding:22px;margin-bottom:16px}.top h1{margin:0 0 5px}.muted{color:#64748b}.top .muted{color:#cbd5e1}.grid{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:16px}.card,.panel{background:#fff;border-radius:15px;padding:16px;box-shadow:0 2px 10px #0000000c}.card small{color:#64748b}.card strong{display:block;font-size:18px;margin-top:8px}.toolbar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}.toolbar>*{min-height:42px}.search{padding:10px;border:1px solid #d5dbe2;border-radius:10px}.btn{border:0;border-radius:10px;padding:10px 14px;font-weight:700;cursor:pointer}.primary{background:#2563eb;color:#fff}.danger{background:#dc2626;color:#fff}.gray{background:#e5e7eb;color:#111827}.success{background:#16a34a;color:#fff}.wa{background:#22c55e;color:#fff;text-decoration:none;display:inline-block;padding:6px 10px;font-size:12px;border-radius:10px;font-weight:700;text-align:center}.login{max-width:430px;margin:8vh auto}.login h1{margin-top:0}.field{margin:10px 0}.field label{display:block;font-size:13px;font-weight:700;margin-bottom:5px}.field input,.field select{width:100%;padding:12px;border:1px solid #d5dbe2;border-radius:10px}.hidden{display:none!important}.table-wrap{overflow:auto}table{width:100%;border-collapse:collapse;min-width:950px}th,td{padding:10px;border-bottom:1px solid #e5e7eb;text-align:left;font-size:13px}th{background:#f8fafc}.badge{padding:5px 8px;border-radius:999px;font-size:11px;font-weight:700}.ok{background:#dcfce7;color:#166534}.warn{background:#fee2e2;color:#991b1b}.modal{position:fixed;inset:0;background:#0008;display:none;padding:20px;overflow:auto}.modalbox{background:#fff;max-width:620px;margin:30px auto;padding:20px;border-radius:16px}.formgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.full{grid-column:1/-1}.note{background:#eff6ff;color:#1e40af;padding:10px;border-radius:10px;font-size:13px}@media(max-width:1000px){.grid{grid-template-columns:repeat(3,1fr)}}@media(max-width:800px){.grid{grid-template-columns:1fr 1fr}.formgrid{grid-template-columns:1fr}.full{grid-column:auto}}@media(max-width:500px){.grid{grid-template-columns:1fr}}
+*{box-sizing:border-box}body{margin:0;font-family:Inter,Arial,sans-serif;background:#f3f6f9;color:#17202a}.wrap{max-width:1200px;margin:auto;padding:18px}.top{background:#111827;color:#fff;border-radius:18px;padding:22px;margin-bottom:16px}.top h1{margin:0 0 5px}.muted{color:#64748b}.top .muted{color:#cbd5e1}.grid{display:grid;grid-template-columns:repeat(6,1fr);gap:12px;margin-bottom:16px}.card,.panel{background:#fff;border-radius:15px;padding:16px;box-shadow:0 2px 10px #0000000c}.card small{color:#64748b}.card strong{display:block;font-size:18px;margin-top:8px}.toolbar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}.toolbar>*{min-height:42px}.search{padding:10px;border:1px solid #d5dbe2;border-radius:10px}.btn{border:0;border-radius:10px;padding:10px 14px;font-weight:700;cursor:pointer}.primary{background:#2563eb;color:#fff}.danger{background:#dc2626;color:#fff}.gray{background:#e5e7eb;color:#111827}.success{background:#16a34a;color:#fff}.wa{background:#22c55e;color:#fff;text-decoration:none;display:inline-block;padding:6px 10px;font-size:12px;border-radius:10px;font-weight:700;text-align:center}.login{max-width:430px;margin:8vh auto}.login h1{margin-top:0}.field{margin:10px 0}.field label{display:block;font-size:13px;font-weight:700;margin-bottom:5px}.field input,.field select{width:100%;padding:12px;border:1px solid #d5dbe2;border-radius:10px}.hidden{display:none!important}.table-wrap{overflow:auto}table{width:100%;border-collapse:collapse;min-width:950px}th,td{padding:10px;border-bottom:1px solid #e5e7eb;text-align:left;font-size:13px}th{background:#f8fafc}.badge{padding:5px 8px;border-radius:999px;font-size:11px;font-weight:700}.ok{background:#dcfce7;color:#166534}.warn{background:#fee2e2;color:#991b1b}.modal{position:fixed;inset:0;background:#0008;display:none;padding:20px;overflow:auto}.modalbox{background:#fff;max-width:620px;margin:30px auto;padding:20px;border-radius:16px}.formgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.full{grid-column:1/-1}.note{background:#eff6ff;color:#1e40af;padding:10px;border-radius:10px;font-size:13px}@media(max-width:1100px){.grid{grid-template-columns:repeat(3,1fr)}}@media(max-width:800px){.grid{grid-template-columns:1fr 1fr}.formgrid{grid-template-columns:1fr}.full{grid-column:auto}}@media(max-width:500px){.grid{grid-template-columns:1fr}}
 </style></head>
 <body>
 <div id="loginView" class="wrap login">
@@ -24,6 +24,7 @@
 <div class="grid">
   <div class="card"><small>Nasabah</small><strong id="count">0</strong></div>
   <div class="card"><small>Total Pokok</small><strong id="principal">Rp0</strong></div>
+  <div class="card"><small>Total Modal Aktif</small><strong id="activePrincipalCard" style="color:#d97706">Rp0</strong></div>
   <div class="card"><small>Total Dibayar</small><strong id="paid">Rp0</strong></div>
   <div class="card"><small>Laba Riil (Lunas)</small><strong id="realProfitCard" style="color:#2563eb">Rp0</strong></div>
   <div class="card"><small>Est. Laba (Belum Lunas)</small><strong id="pendingProfitCard" style="color:#d97706">Rp0</strong></div>
@@ -47,8 +48,11 @@
 </div>
 
 <div class="panel">
-  <h2>Riwayat Pinjaman Sudah Lunas</h2>
-  <div class="table-wrap"><table><thead><tr><th>Nasabah</th><th>Investor</th><th>Mulai</th><th>Pokok</th><th>Hari</th><th>Denda</th><th>Dibayar</th><th>Sisa</th><th>Tgl Lunas</th><th>Status</th><th id="actHeadLunas">Aksi</th></tr></thead><tbody id="lunasRows"></tbody></table></div>
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+    <h2 style="margin:0">Riwayat Pinjaman Sudah Lunas</h2>
+    <button class="btn gray" id="toggleLunasBtn" onclick="toggleLunasSection()" style="padding:6px 12px;font-size:12px">Sembunyikan Lunas</button>
+  </div>
+  <div id="lunasContainer" class="table-wrap"><table><thead><tr><th>Nasabah</th><th>Investor</th><th>Mulai</th><th>Pokok</th><th>Hari</th><th>Denda</th><th>Dibayar</th><th>Sisa</th><th>Tgl Lunas</th><th>Status</th><th id="actHeadLunas">Aksi</th></tr></thead><tbody id="lunasRows"></tbody></table></div>
 </div>
 
 <div class="panel"><h2>Ringkasan Bagi Hasil & Modal Investor</h2><div class="table-wrap"><table><thead><tr><th>Investor</th><th>Total Modal</th><th>Modal Aktif</th><th>Modal Sisa</th><th>Total Laba Investor</th><th id="dapinHead">Hak Bersih Dapin</th><th>Aksi</th></tr></thead><tbody id="investorRows"></tbody></table></div></div>
@@ -146,8 +150,23 @@ const SUPABASE_URL='https://chqdgxjdfbsatzoivpwb.supabase.co';
 const SUPABASE_KEY='sb_publishable_vq_6la2B3uYk1c2SdXQYyw_KTe0QJCy';
 const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 let profile=null, customers=[], payments=[], investors=[], withdrawals=[];
+let showLunasSection = true;
+
 const money=n=>new Intl.NumberFormat('id-ID',{style:'currency',currency:'IDR',maximumFractionDigits:0}).format(Number(n)||0);
 const dateFmt=s=>s?new Date(s+'T00:00:00').toLocaleDateString('id-ID'): '-';
+
+function toggleLunasSection(){
+  showLunasSection = !showLunasSection;
+  let container = document.getElementById('lunasContainer');
+  let btn = document.getElementById('toggleLunasBtn');
+  if(showLunasSection){
+    container.classList.remove('hidden');
+    btn.textContent = 'Sembunyikan Lunas';
+  } else {
+    container.classList.add('hidden');
+    btn.textContent = 'Tampilkan Lunas';
+  }
+}
 
 function getDays(c){
   let end = c.settled_date ? new Date(c.settled_date+'T00:00:00') : new Date();
@@ -162,13 +181,11 @@ function penalty(c){
   let maxD = Number(c.max_days || 5);
 
   if(c.rate_type === 'special'){
-    // Skema Khusus: Tarif normal 15% dari hari ke-1 sampai max_days, tarif 30% (2x lipat) HANYA mulai hari setelah max_days
     for (let i = 1; i <= d; i++) {
       let rate = i > maxD ? 0.30 : 0.15;
       totalPenalty += principal * rate;
     }
   } else {
-    // Skema Standar: Tarif normal 10% dari hari ke-1 sampai max_days, tarif 20% (2x lipat) HANYA mulai hari setelah max_days
     for (let i = 1; i <= d; i++) {
       let rate = i > maxD ? 0.20 : 0.10;
       totalPenalty += principal * rate;
@@ -334,7 +351,6 @@ function generateCustomerRow(c, showCustomerNameDirectly){
   
   let maxD = Number(c.max_days || 5);
   let isOverMax = x.days > maxD;
-  // Warna font merah tebal HANYA aktif jika hari berjalan melebihi batas max_days
   let dayStyle = isOverMax ? 'color:#dc2626;font-weight:bold;' : '';
 
   let rateBadge = c.rate_type === 'special' ? '<br><small style="color:#d97706;font-weight:bold">⚡ Khusus (15%/30%)</small>' : '';
@@ -406,6 +422,14 @@ function render(){
 
  count.textContent = list.length;
  principal.textContent = money(list.reduce((a,c)=>a+Number(c.principal),0));
+ 
+ // Perhitungan Total Modal Aktif (hanya dari pinjaman yang belum lunas)
+ let activeList = list.filter(c => !isCustomerLunas(c));
+ let lunasList = list.filter(c => isCustomerLunas(c));
+ 
+ let totalActivePrincipal = activeList.reduce((a,c)=>a+Number(c.principal),0);
+ document.getElementById('activePrincipalCard').textContent = money(totalActivePrincipal);
+
  paid.textContent = money(list.reduce((a,c)=>a+paidFor(c.id),0));
 
  let realProfit = 0;
@@ -421,9 +445,6 @@ function render(){
  });
  realProfitCard.textContent = money(realProfit);
  pendingProfitCard.textContent = money(pendingProfit);
-
- let activeList = list.filter(c => !isCustomerLunas(c));
- let lunasList = list.filter(c => isCustomerLunas(c));
 
  rows.innerHTML = renderTableRows(activeList, false);
  lunasRows.innerHTML = renderTableRows(lunasList, true);
