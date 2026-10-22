@@ -168,6 +168,7 @@ function penalty(c){
   } else {
     let maxD = Number(c.max_days || 5);
     for (let i = 1; i <= d; i++) {
+      // Kadar 2x ganda (20%) hanya bermula APABILA melebihi max_days (contoh max 5 hari, hari ke-6 baru 20%)
       let rate = i > maxD ? 0.20 : 0.10;
       totalPenalty += principal * rate;
     }
@@ -330,8 +331,10 @@ function generateCustomerRow(c, showCustomerNameDirectly){
   let lunas = isCustomerLunas(c);
   let settledDisplay = c.settled_date ? dateFmt(c.settled_date) : (lunas ? '<span class="muted" style="font-size:11px">Belum diset</span>' : '-');
   
+  // Menentukan had maksimum hari untuk warna merah (Skema khas 5 hari, skema standard ikut max_days)
   let maxD = c.rate_type === 'special' ? 5 : Number(c.max_days || 5);
   let isOverMax = x.days > maxD;
+  // Warna font merah tebal HANYA muncul jika sudah melebihi batas max hari
   let dayStyle = isOverMax ? 'color:#dc2626;font-weight:bold;' : '';
 
   let rateBadge = c.rate_type === 'special' ? '<br><small style="color:#d97706;font-weight:bold">⚡ Khusus (15%/30%)</small>' : '';
@@ -722,7 +725,7 @@ async function saveInvestor(){
   } else {
     finalCapital = Number(icapitalNew.value) || 0;
   }
-  
+
   let data = {
     name: iname.value.trim(),
     email: iemail.value.trim(),
