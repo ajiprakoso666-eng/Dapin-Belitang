@@ -162,13 +162,13 @@ function penalty(c){
   let maxD = Number(c.max_days || 5);
 
   if(c.rate_type === 'special'){
-    // Skema Khusus: Tarif normal 15% sampai max_days (default 5), tarif 30% (2x lipat) setelah melebihi max_days
+    // Skema Khusus: Tarif normal 15% dari hari ke-1 sampai max_days, tarif 30% (2x lipat) HANYA mulai hari setelah max_days
     for (let i = 1; i <= d; i++) {
       let rate = i > maxD ? 0.30 : 0.15;
       totalPenalty += principal * rate;
     }
   } else {
-    // Skema Standar: Tarif normal 10% sampai max_days, tarif 20% (2x lipat) setelah melebihi max_days
+    // Skema Standar: Tarif normal 10% dari hari ke-1 sampai max_days, tarif 20% (2x lipat) HANYA mulai hari setelah max_days
     for (let i = 1; i <= d; i++) {
       let rate = i > maxD ? 0.20 : 0.10;
       totalPenalty += principal * rate;
@@ -332,10 +332,9 @@ function generateCustomerRow(c, showCustomerNameDirectly){
   let lunas = isCustomerLunas(c);
   let settledDisplay = c.settled_date ? dateFmt(c.settled_date) : (lunas ? '<span class="muted" style="font-size:11px">Belum diset</span>' : '-');
   
-  // Menggunakan max_days pinjaman sebagai patokan batas max hari untuk semua skema
   let maxD = Number(c.max_days || 5);
   let isOverMax = x.days > maxD;
-  // Warna font merah tebal HANYA aktif jika hari berjalan melebihi batas max hari
+  // Warna font merah tebal HANYA aktif jika hari berjalan melebihi batas max_days
   let dayStyle = isOverMax ? 'color:#dc2626;font-weight:bold;' : '';
 
   let rateBadge = c.rate_type === 'special' ? '<br><small style="color:#d97706;font-weight:bold">⚡ Khusus (15%/30%)</small>' : '';
