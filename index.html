@@ -50,9 +50,11 @@
 <div class="panel">
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
     <h2 style="margin:0">Riwayat Pinjaman Sudah Lunas</h2>
-    <button class="btn gray" id="toggleLunasBtn" onclick="toggleLunasSection()" style="padding:6px 12px;font-size:12px">Sembunyikan Lunas</button>
+    <!-- Default tombol tertulis 'Tampilkan Lunas' karena status awal di-hidden -->
+    <button class="btn gray" id="toggleLunasBtn" onclick="toggleLunasSection()" style="padding:6px 12px;font-size:12px">Tampilkan Lunas</button>
   </div>
-  <div id="lunasContainer" class="table-wrap"><table><thead><tr><th>Nasabah</th><th>Investor</th><th>Mulai</th><th>Pokok</th><th>Hari</th><th>Denda</th><th>Dibayar</th><th>Sisa</th><th>Tgl Lunas</th><th>Status</th><th id="actHeadLunas">Aksi</th></tr></thead><tbody id="lunasRows"></tbody></table></div>
+  <!-- Class 'hidden' disematkan secara default agar otomatis tersembunyi saat dimuat -->
+  <div id="lunasContainer" class="table-wrap hidden"><table><thead><tr><th>Nasabah</th><th>Investor</th><th>Mulai</th><th>Pokok</th><th>Hari</th><th>Denda</th><th>Dibayar</th><th>Sisa</th><th>Tgl Lunas</th><th>Status</th><th id="actHeadLunas">Aksi</th></tr></thead><tbody id="lunasRows"></tbody></table></div>
 </div>
 
 <div class="panel"><h2>Ringkasan Bagi Hasil & Modal Investor</h2><div class="table-wrap"><table><thead><tr><th>Investor</th><th>Total Modal</th><th>Modal Aktif</th><th>Modal Sisa</th><th>Total Laba Investor</th><th id="dapinHead">Hak Bersih Dapin</th><th>Aksi</th></tr></thead><tbody id="investorRows"></tbody></table></div></div>
@@ -150,7 +152,8 @@ const SUPABASE_URL='https://chqdgxjdfbsatzoivpwb.supabase.co';
 const SUPABASE_KEY='sb_publishable_vq_6la2B3uYk1c2SdXQYyw_KTe0QJCy';
 const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 let profile=null, customers=[], payments=[], investors=[], withdrawals=[];
-let showLunasSection = true;
+// Set default ke false agar riwayat lunas otomatis tersembunyi (auto-hide) saat awal dimuat
+let showLunasSection = false;
 
 const money=n=>new Intl.NumberFormat('id-ID',{style:'currency',currency:'IDR',maximumFractionDigits:0}).format(Number(n)||0);
 const dateFmt=s=>s?new Date(s+'T00:00:00').toLocaleDateString('id-ID'): '-';
@@ -423,7 +426,6 @@ function render(){
  count.textContent = list.length;
  principal.textContent = money(list.reduce((a,c)=>a+Number(c.principal),0));
  
- // Perhitungan Total Modal Aktif (hanya dari pinjaman yang belum lunas)
  let activeList = list.filter(c => !isCustomerLunas(c));
  let lunasList = list.filter(c => isCustomerLunas(c));
  
@@ -488,7 +490,7 @@ function render(){
     <td><b>${money(currentProfitInvestor)}</b></td>
     ${dapinCellHtml}
     <td>${profile.role==='admin'?`
-      <button class="btn success" onclick="withdrawInvestor('${i.id}', ${maxWithdraw},${availableCapital}, ${totalCapital},${currentProfitInvestor})" style="margin-right:3px;padding:6px 10px;font-size:12px">Withdraw</button>
+      <button class="btn success" onclick="withdrawInvestor('${i.id}', ${maxWithdraw}, ${availableCapital}, ${totalCapital}, ${currentProfitInvestor})" style="margin-right:3px;padding:6px 10px;font-size:12px">Withdraw</button>
       <button class="btn primary" onclick="showHistory('${i.id}', '${esc(i.name)}')" style="margin-right:3px;padding:6px 10px;font-size:12px">Riwayat WD</button>
       <button class="btn gray" onclick="openInvestor('${i.id}')" style="margin-right:3px;padding:6px 10px;font-size:12px">Edit</button>
       <button class="btn danger" onclick="deleteInvestor('${i.id}')" style="padding:6px 10px;font-size:12px">Hapus</button>`:''}</td>
